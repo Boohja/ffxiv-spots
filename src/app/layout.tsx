@@ -1,21 +1,21 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Exo_2, Space_Grotesk } from "next/font/google";
 import { MainNavbar } from "@/components/layout/MainNavbar";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const exo2 = Exo_2({
+  variable: "--font-exo-2",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "xivspots",
-  description: "Learning-focused Next.js skeleton for Vercel",
+  title: "XIVSpots",
+  description: "Discover scenic photo spots across Eorzea and beyond.",
 };
 
 export default function RootLayout({
@@ -26,9 +26,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${spaceGrotesk.variable} ${exo2.variable} h-full antialiased`}
     >
-      <body className="min-h-full bg-zinc-50 text-zinc-900">
+      <body className="flex min-h-full flex-col bg-surface-page text-text-primary">
         <MainNavbar />
         <div className="flex-1">{children}</div>
       </body>

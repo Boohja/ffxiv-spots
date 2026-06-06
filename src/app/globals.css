@@ -1,26 +1,114 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+
+  --brand-spark: #5DEBFF;
+  --brand-cyan: #22D3EE;
+  --brand-azure: #2F8CFF;
+  --brand-blue: #2563EB;
+  --brand-deep-blue: #0B3A8F;
+  --brand-gold: #F2C46D;
+
+  --surface-page: #030712;
+  --surface-base: #07111F;
+  --surface-raised: #0B1628;
+  --surface-elevated: #101D33;
+  --surface-overlay: #13233D;
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-muted: #94A3B8;
+  --text-subtle: #64748B;
+  --text-disabled: #475569;
+  --text-inverse: #020617;
+
+  --border-subtle: #1E293B;
+  --border-default: #334155;
+  --border-strong: #475569;
+  --border-active: #38BDF8;
+
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --info: #38BDF8;
+
+  --gradient-primary: linear-gradient(135deg, #2563EB 0%, #22D3EE 100%);
+  --gradient-primary-hover: linear-gradient(135deg, #2F8CFF 0%, #5DEBFF 100%);
+  --gradient-spark: radial-gradient(circle, #5DEBFF 0%, #22D3EE 42%, #2563EB 100%);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-brand-spark: var(--brand-spark);
+  --color-brand-cyan: var(--brand-cyan);
+  --color-brand-azure: var(--brand-azure);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-deep-blue: var(--brand-deep-blue);
+  --color-brand-gold: var(--brand-gold);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-surface-page: var(--surface-page);
+  --color-surface-base: var(--surface-base);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-overlay: var(--surface-overlay);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-text-disabled: var(--text-disabled);
+  --color-text-inverse: var(--text-inverse);
+
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-border-active: var(--border-active);
+
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  --background-image-gradient-primary: var(--gradient-primary);
+  --background-image-gradient-primary-hover: var(--gradient-primary-hover);
+  --background-image-gradient-spark: var(--gradient-spark);
+
+  --font-sans: var(--font-space-grotesk);
+  --font-display: var(--font-exo-2);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, 0.08), transparent 35%),
+    linear-gradient(215deg, rgba(242, 196, 109, 0.07), transparent 32%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(10, 23, 43, 0.92) 0,
+      rgba(10, 23, 43, 0.92) 2px,
+      rgba(5, 14, 30, 0.92) 2px,
+      rgba(5, 14, 30, 0.92) 6px
+    ),
+    var(--surface-page);
+  color: var(--text-primary);
+  font-family: var(--font-space-grotesk), "Segoe UI", sans-serif;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-exo-2), "Segoe UI", sans-serif;
+  letter-spacing: 0;
+}
+
+.glass-panel {
+  border: 1px solid rgba(71, 85, 105, 0.65);
+  background: linear-gradient(180deg, rgba(14, 28, 50, 0.8), rgba(7, 17, 31, 0.88));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 22px 44px -36px rgba(15, 23, 42, 0.9);
+}
+
+.neon-outline {
+  box-shadow: 0 0 0 1px rgba(93, 235, 255, 0.28), 0 0 28px -14px rgba(93, 235, 255, 0.85);
 }

@@ -4,7 +4,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
 
-  // TODO: Validate `code`, exchange it for Discord tokens, then create a session.
+  // Next step: Validate `code`, exchange it for tokens, then create a session.
   return NextResponse.json(
     {
       message: "Discord auth callback placeholder",

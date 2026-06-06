@@ -1,0 +1,20 @@
+<svg width="1200" height="700" viewBox="0 0 1200 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sky" x1="600" y1="40" x2="600" y2="640" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#77C9FF" />
+      <stop offset="1" stop-color="#1B3C8F" />
+    </linearGradient>
+    <linearGradient id="mountain" x1="290" y1="302" x2="890" y2="660" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E2F6FF" />
+      <stop offset="1" stop-color="#3263CD" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="700" fill="url(#sky)"/>
+  <circle cx="1020" cy="110" r="62" fill="#DDF4FF" fill-opacity="0.82"/>
+  <path d="M140 580L350 330L480 495L620 265L790 495L920 360L1060 580V700H140V580Z" fill="url(#mountain)"/>
+  <path d="M420 520L560 380L680 520H420Z" fill="#0B255A" fill-opacity="0.65"/>
+  <path d="M520 520L610 320L700 520H520Z" fill="#0A1C45" fill-opacity="0.8"/>
+  <path d="M110 120L118 148L146 156L118 164L110 192L102 164L74 156L102 148L110 120Z" fill="#CFFAFE"/>
+  <path d="M270 85L276 106L298 113L276 120L270 141L264 120L242 113L264 106L270 85Z" fill="#A6E9FF"/>
+  <path d="M860 170L867 194L891 201L867 208L860 232L853 208L829 201L853 194L860 170Z" fill="#DFF7FF"/>
+</svg>

@@ -1,0 +1,10 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="sparkGlow" cx="50%" cy="50%" r="65%">
+      <stop offset="0%" stop-color="#A7FAFF" />
+      <stop offset="45%" stop-color="#5DEBFF" />
+      <stop offset="100%" stop-color="#1C6BFF" />
+    </radialGradient>
+  </defs>
+  <path d="M128 28L145 93L210 110L145 127L128 192L111 127L46 110L111 93L128 28Z" fill="url(#sparkGlow)"/>
+</svg>

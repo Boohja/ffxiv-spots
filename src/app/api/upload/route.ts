@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-export async function POST(_request: Request) {
-  // TODO: Parse multipart/form-data, validate file size/type, upload to storage.
+export async function POST() {
+  // Next step: Parse multipart/form-data, validate file size/type, then upload.
   return NextResponse.json(
     {
       message: "Upload endpoint placeholder",
