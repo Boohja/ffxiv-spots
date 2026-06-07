@@ -1,16 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const code = searchParams.get("code");
-
-  // Next step: Validate `code`, exchange it for tokens, then create a session.
-  return NextResponse.json(
-    {
-      message: "Discord auth callback placeholder",
-      code,
-      nextStep: "Implement OAuth code exchange and session handling.",
-    },
-    { status: 501 },
-  );
+export async function GET(request: NextRequest) {
+  return NextResponse.redirect(new URL("/auth/login", request.url));
 }
