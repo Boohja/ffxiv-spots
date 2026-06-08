@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { ProfileEditForm } from "@/components/users/ProfileEditForm";
 import { createClient } from "@/lib/supabase/server";
+import { canViewUserProfile, isOwnProfile } from "@/lib/users/profile-visibility";
 
 type UserProfilePageProps = Readonly<{
   params: Promise<{ id: string }>;
@@ -35,11 +36,11 @@ export async function generateMetadata({ params }: UserProfilePageProps): Promis
   } = await supabase.auth.getUser();
   const { data: profile } = await supabase
     .from("app_users")
-    .select("displayname, public")
+    .select("id, displayname, public")
     .eq("id", id)
-    .maybeSingle<Pick<PublicProfile, "displayname" | "public">>();
+    .maybeSingle<Pick<PublicProfile, "id" | "displayname" | "public">>();
 
-  if (!profile || (!profile.public && user?.id !== id)) {
+  if (!canViewUserProfile(profile, user?.id)) {
     return { title: "User not found | XIVSpots" };
   }
 
@@ -60,17 +61,17 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const isOwnProfile = user?.id === id;
   const { data: profile, error } = await supabase
     .from("app_users")
     .select("id, displayname, avatar_url, created_at, public, social_x, social_instagram")
     .eq("id", id)
     .maybeSingle<PublicProfile>();
 
-  if (error || !profile || (!profile.public && !isOwnProfile)) {
+  if (error || !canViewUserProfile(profile, user?.id)) {
     notFound();
   }
 
+  const isOwner = isOwnProfile(profile, user?.id);
   const displayname = profile.displayname ?? "XIVSpots user";
   const socialLinks = [
     profile.social_x
@@ -114,7 +115,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
             </div>
           </div>
 
-          {isOwnProfile ? (
+          {isOwner ? (
             <a
               href="#edit-profile"
               className="inline-flex h-10 items-center justify-center rounded-lg border border-border-default bg-surface-elevated px-4 text-sm font-semibold text-text-primary transition hover:border-border-active/60 hover:bg-surface-overlay"
@@ -148,7 +149,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
         </div>
       </section>
 
-      {isOwnProfile ? (
+      {isOwner ? (
         <section id="edit-profile">
           <ProfileEditForm
             profile={{

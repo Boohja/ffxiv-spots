@@ -3,9 +3,10 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { updateUserProfile, type ProfileFormState } from "@/app/users/[id]/actions";
+import { updateUserProfile } from "@/app/users/[id]/actions";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import type { ProfileFormState } from "@/lib/users/profile-form";
 
 type ProfileEditFormProps = Readonly<{
   profile: {
