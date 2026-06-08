@@ -93,6 +93,18 @@ body {
   font-family: var(--font-space-grotesk), "Segoe UI", sans-serif;
 }
 
+:where(a[href], button:not(:disabled), [role="button"]:not([aria-disabled="true"])) {
+  cursor: pointer;
+}
+
+:where(a[href], button:not(:disabled), [role="button"]:not([aria-disabled="true"])) * {
+  cursor: inherit;
+}
+
+:where(button:disabled, [aria-disabled="true"]) {
+  cursor: not-allowed;
+}
+
 h1,
 h2,
 h3,
