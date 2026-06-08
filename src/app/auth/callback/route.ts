@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { upsertAppUserProfile } from "@/lib/auth/profile";
 import { createClient } from "@/lib/supabase/server";
 
 function getSafeNext(value: string | null) {
@@ -16,6 +17,18 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        try {
+          await upsertAppUserProfile(supabase, user);
+        } catch (profileError) {
+          console.error("Failed to upsert app user profile.", profileError);
+        }
+      }
+
       const forwardedHost = request.headers.get("x-forwarded-host");
       const isLocalEnv = process.env.NODE_ENV === "development";
 
