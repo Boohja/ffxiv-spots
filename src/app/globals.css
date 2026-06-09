@@ -89,20 +89,10 @@ body {
       rgba(5, 14, 30, 0.92) 6px
     ),
     var(--surface-page);
+  background-attachment: fixed, fixed, scroll, fixed;
+  background-repeat: no-repeat, no-repeat, repeat, no-repeat;
   color: var(--text-primary);
   font-family: var(--font-space-grotesk), "Segoe UI", sans-serif;
-}
-
-:where(a[href], button:not(:disabled), [role="button"]:not([aria-disabled="true"])) {
-  cursor: pointer;
-}
-
-:where(a[href], button:not(:disabled), [role="button"]:not([aria-disabled="true"])) * {
-  cursor: inherit;
-}
-
-:where(button:disabled, [aria-disabled="true"]) {
-  cursor: not-allowed;
 }
 
 h1,
@@ -123,4 +113,33 @@ h6 {
 
 .neon-outline {
   box-shadow: 0 0 0 1px rgba(93, 235, 255, 0.28), 0 0 28px -14px rgba(93, 235, 255, 0.85);
+}
+
+.kofi-footer-widget .floatingchat-container-wrap,
+.kofi-footer-widget .floatingchat-container-wrap-mobi {
+  position: static !important;
+  width: 195px !important;
+  max-width: none !important;
+  height: 50px !important;
+  margin-right: -1.375rem !important;
+  opacity: 1 !important;
+}
+
+.kofi-footer-widget .floatingchat-container,
+.kofi-footer-widget .floatingchat-container-mobi {
+  position: static !important;
+  width: 195px !important;
+  height: 50px !important;
+}
+
+.kofi-footer-widget .floatingchat-container-wrap-mobi,
+.kofi-footer-widget .floatingchat-container-mobi {
+  display: none !important;
+}
+
+.kofi-footer-widget .floating-chat-kofi-popup-iframe,
+.kofi-footer-widget .floating-chat-kofi-popup-iframe-mobi {
+  bottom: 7.5rem !important;
+  right: max(1rem, calc((100vw - 72rem) / 2 + 1rem)) !important;
+  left: auto !important;
 }

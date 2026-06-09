@@ -14,7 +14,7 @@ const links = [
 
 export function MainNavbar() {
   return (
-    <header className="border-b border-border-subtle/60 bg-surface-base/85 backdrop-blur-xl">
+    <header className="relative z-50 border-b border-border-subtle/60 bg-surface-base">
       <nav className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           <Link href="/" className="flex h-12 shrink-0 items-center gap-2" aria-label="xivspots home">

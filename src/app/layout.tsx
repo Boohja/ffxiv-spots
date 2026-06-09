@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Exo_2, Space_Grotesk } from "next/font/google";
+import { MainFooter } from "@/components/layout/MainFooter";
 import { MainNavbar } from "@/components/layout/MainNavbar";
 import "./globals.css";
 
@@ -31,6 +32,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-surface-page text-text-primary">
         <MainNavbar />
         <div className="flex-1">{children}</div>
+        <MainFooter />
       </body>
     </html>
   );
