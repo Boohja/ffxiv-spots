@@ -3,6 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { ProfileEditForm } from "@/components/users/ProfileEditForm";
+import type { UserRole } from "@/lib/spots/types";
 import { createClient } from "@/lib/supabase/server";
 import { canViewUserProfile, isOwnProfile } from "@/lib/users/profile-visibility";
 
@@ -20,6 +21,10 @@ type PublicProfile = {
   social_instagram: string | null;
 };
 
+type ViewerProfile = {
+  role: UserRole;
+};
+
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -34,13 +39,14 @@ export async function generateMetadata({ params }: UserProfilePageProps): Promis
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const viewerRole = await getViewerRole(supabase, user?.id);
   const { data: profile } = await supabase
     .from("app_users")
     .select("id, displayname, public")
     .eq("id", id)
     .maybeSingle<Pick<PublicProfile, "id" | "displayname" | "public">>();
 
-  if (!canViewUserProfile(profile, user?.id)) {
+  if (!canViewUserProfile(profile, user?.id, viewerRole)) {
     return { title: "User not found | XIVSpots" };
   }
 
@@ -61,13 +67,14 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const viewerRole = await getViewerRole(supabase, user?.id);
   const { data: profile, error } = await supabase
     .from("app_users")
     .select("id, displayname, avatar_url, created_at, public, social_x, social_instagram")
     .eq("id", id)
     .maybeSingle<PublicProfile>();
 
-  if (error || !canViewUserProfile(profile, user?.id)) {
+  if (error || !canViewUserProfile(profile, user?.id, viewerRole)) {
     notFound();
   }
 
@@ -164,6 +171,23 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
       ) : null}
     </main>
   );
+}
+
+async function getViewerRole(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  viewerId?: string | null,
+) {
+  if (!viewerId) {
+    return null;
+  }
+
+  const { data } = await supabase
+    .from("app_users")
+    .select("role")
+    .eq("id", viewerId)
+    .maybeSingle<ViewerProfile>();
+
+  return data?.role ?? null;
 }
 
 function formatMemberSince(value: string) {

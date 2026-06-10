@@ -33,6 +33,8 @@ type SubmitFeedback =
   | undefined;
 
 type SubmitMode = "draft" | "submitted";
+type EditMode = "create" | "ownerDraft" | "ownerSubmitted" | "review";
+type EditAction = "save_draft" | "submit" | "revoke" | "save_review" | "accept" | "delete";
 
 type CompletionState =
   | {
@@ -41,17 +43,47 @@ type CompletionState =
     }
   | undefined;
 
-export function SubmitSpotForm() {
+type ExistingSpotImage = {
+  id: string;
+  url: string;
+  alt: string | null;
+};
+
+export type EditableSpotFormValue = {
+  id: string;
+  slug: string;
+  state: "draft" | "submitted" | "accepted";
+  zone: string;
+  x: number;
+  y: number;
+  z: number | null;
+  title: string;
+  description: string | null;
+  tags: string[] | null;
+  access_notes: string | null;
+  images: ExistingSpotImage[];
+};
+
+type SubmitSpotFormProps = Readonly<{
+  mode?: EditMode;
+  spot?: EditableSpotFormValue;
+}>;
+
+export function SubmitSpotForm({ mode = "create", spot }: SubmitSpotFormProps) {
   const router = useRouter();
+  const isCreateMode = mode === "create";
+  const isEditable = mode !== "ownerSubmitted";
+  const isReviewMode = mode === "review";
   const sortedZones = useMemo(
     () => [...zoneMetadata].sort((a, b) => a.zone.localeCompare(b.zone)),
     [],
   );
-  const [zoneQuery, setZoneQuery] = useState("Upper La Noscea");
-  const [xCoordinate, setXCoordinate] = useState("");
-  const [yCoordinate, setYCoordinate] = useState("");
+  const [zoneQuery, setZoneQuery] = useState(spot?.zone ?? "Upper La Noscea");
+  const [xCoordinate, setXCoordinate] = useState(spot ? String(spot.x) : "");
+  const [yCoordinate, setYCoordinate] = useState(spot ? String(spot.y) : "");
   const [isZoneListOpen, setIsZoneListOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
+  const [existingImages, setExistingImages] = useState<ExistingSpotImage[]>(spot?.images ?? []);
   const [nearbyLandmark, setNearbyLandmark] = useState<NearbyLandmark | null>(null);
   const [isLandmarkLookupPending, setIsLandmarkLookupPending] = useState(false);
   const [submitFeedback, setSubmitFeedback] = useState<SubmitFeedback>();
@@ -141,17 +173,52 @@ export function SubmitSpotForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await saveSpot("submitted", event.currentTarget);
+    await saveSpot(isReviewMode ? "save_review" : "submit", event.currentTarget);
   }
 
-  async function saveSpot(state: SubmitMode, form: HTMLFormElement) {
+  async function saveSpot(action: SubmitMode | EditAction, form: HTMLFormElement) {
+    if (!isEditable && action !== "revoke") {
+      return;
+    }
+
+    if (
+      action === "delete" &&
+      !window.confirm("Delete this spot and all screenshots? This action cannot be undone.")
+    ) {
+      return;
+    }
+
+    const deletionReason =
+      action === "delete"
+        ? window.prompt("Add the reviewer comment that will be sent to the submitter.")
+        : null;
+
+    if (action === "delete" && deletionReason === null) {
+      return;
+    }
+
     const formData = new FormData(form);
     const title = String(formData.get("title") ?? "").trim() || suggestedTitle;
-    const validationError = validateSubmission(state, title);
+    const validationError = validateSubmission(action, title);
 
-    formData.set("state", state);
+    if (isCreateMode) {
+      formData.set("state", action === "save_draft" || action === "draft" ? "draft" : "submitted");
+    } else {
+      formData.set("action", normalizeEditAction(action));
+    }
+
     formData.set("title", title);
+
+    if (action === "delete") {
+      formData.set("deletionReason", deletionReason?.trim() ?? "");
+    }
+
     formData.delete("images");
+    formData.delete("existingImageIds");
+
+    for (const image of existingImages) {
+      formData.append("existingImageIds", image.id);
+    }
 
     for (const image of selectedImages) {
       formData.append("images", image.file);
@@ -159,7 +226,7 @@ export function SubmitSpotForm() {
 
     setHasSubmitted(true);
     setSubmitFeedback({
-      message: state === "draft" ? "Saving draft..." : "Submitting spot...",
+      message: getPendingMessage(action),
       tone: "info",
     });
     setIsSubmitting(true);
@@ -173,19 +240,35 @@ export function SubmitSpotForm() {
     }
 
     try {
-      const response = await fetch("/api/spots", {
-        method: "POST",
+      const response = await fetch(isCreateMode ? "/api/spots" : `/api/spots/${spot?.id}`, {
+        method: isCreateMode ? "POST" : "PATCH",
         body: formData,
       });
-      const payload = (await response.json()) as { spot?: { slug: string }; error?: string };
+      const payload = (await response.json()) as { deleted?: boolean; spot?: { slug: string }; error?: string };
 
-      if (!response.ok || !payload.spot) {
+      if (!response.ok || (!payload.spot && !payload.deleted)) {
         throw new Error(payload.error ?? "Could not save spot.");
       }
 
-      const savedSlug = payload.spot.slug;
+      if (payload.deleted) {
+        router.push("/moderation/spots");
+        return;
+      }
 
-      setCompletion({ state, slug: savedSlug });
+      const savedSlug = payload.spot?.slug ?? spot?.slug ?? "";
+
+      if (!isCreateMode) {
+        if (mode === "review") {
+          router.push("/moderation/spots");
+        } else {
+          router.push(`/spots/${savedSlug}/edit`);
+          router.refresh();
+        }
+
+        return;
+      }
+
+      setCompletion({ state: formData.get("state") === "draft" ? "draft" : "submitted", slug: savedSlug });
       window.setTimeout(() => {
         router.push(`/spots/${savedSlug}`);
       }, 5000);
@@ -199,7 +282,11 @@ export function SubmitSpotForm() {
     }
   }
 
-  function validateSubmission(state: SubmitMode, title: string) {
+  function validateSubmission(action: SubmitMode | EditAction, title: string) {
+    if (action === "revoke" || action === "delete") {
+      return undefined;
+    }
+
     if (!metadata) {
       return "Choose a known zone from the zone list.";
     }
@@ -208,24 +295,67 @@ export function SubmitSpotForm() {
       return "Enter X and Y coordinates.";
     }
 
-    if (state === "submitted" && !title) {
+    const finalState = action === "save_draft" || action === "draft" ? "draft" : "submitted";
+
+    if (finalState === "submitted" && !title) {
       return "Add a spot title or use the suggested title.";
     }
 
-    if (state === "submitted" && selectedImages.length === 0) {
+    if (finalState === "submitted" && selectedImages.length + existingImages.length === 0) {
       return "Choose a screenshot.";
     }
 
-    if (selectedImages.length > 2) {
+    if (selectedImages.length + existingImages.length > 2) {
       return "Choose at most two screenshots.";
     }
 
     return undefined;
   }
 
+  if (mode === "ownerSubmitted" && spot) {
+    return (
+      <section className="glass-panel rounded-lg p-6">
+        <SectionHeading eyebrow="Submitted" title="This spot is waiting for review" />
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary">
+          Submitted spots are locked while they are in review. You can revoke the submission to move it back to drafts.
+        </p>
+        <dl className="mt-5 grid gap-3 sm:grid-cols-3">
+          <SummaryItem label="Zone" value={spot.zone} />
+          <SummaryItem label="Coordinates" value={`X ${spot.x}, Y ${spot.y}`} />
+          <SummaryItem label="Images" value={String(spot.images.length)} />
+        </dl>
+        {submitFeedback && hasSubmitted ? (
+          <p
+            className={`mt-5 rounded-lg border px-3 py-2 text-sm leading-6 ${
+              submitFeedback.tone === "error"
+                ? "border-danger/50 bg-danger/10 text-text-primary"
+                : "border-border-default bg-surface-base text-text-secondary"
+            }`}
+          >
+            {submitFeedback.message}
+          </p>
+        ) : null}
+        <Button
+          type="button"
+          variant="secondary"
+          className="mt-5"
+          disabled={isSubmitting}
+          onClick={(event) => {
+            const form = event.currentTarget.form ?? document.createElement("form");
+            void saveSpot("revoke", form);
+          }}
+        >
+          {isSubmitting ? "Processing..." : "Revoke submission"}
+        </Button>
+      </section>
+    );
+  }
+
   if (completion) {
     return <SubmissionCompleteCard state={completion.state} slug={completion.slug} />;
   }
+
+  const totalImages = existingImages.length + selectedImages.length;
 
   return (
     <form className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]" onSubmit={handleSubmit}>
@@ -268,7 +398,13 @@ export function SubmitSpotForm() {
                 />
               </Field>
               <Field label="Z (optional)" htmlFor="spot-z">
-                <Input id="spot-z" name="z" inputMode="decimal" placeholder="1.4" />
+                <Input
+                  id="spot-z"
+                  name="z"
+                  inputMode="decimal"
+                  placeholder="1.4"
+                  defaultValue={spot?.z ?? ""}
+                />
               </Field>
               <Field
                 label={
@@ -291,6 +427,7 @@ export function SubmitSpotForm() {
                 id="spot-access"
                 name="accessibilityNotes"
                 rows={3}
+                defaultValue={spot?.access_notes ?? ""}
                 placeholder="Nearest aetheryte, flying needs, quest access, party size notes..."
               />
             </Field>
@@ -301,18 +438,24 @@ export function SubmitSpotForm() {
           <SectionHeading eyebrow="Details" title="What makes it worth visiting?" />
           <div className="mt-5 space-y-4">
             <Field label="Spot title" htmlFor="spot-title">
-              <Input id="spot-title" name="title" placeholder={suggestedTitle} />
+              <Input id="spot-title" name="title" defaultValue={spot?.title ?? ""} placeholder={suggestedTitle} />
             </Field>
             <Field label="Description (optional)" htmlFor="spot-description">
               <Textarea
                 id="spot-description"
                 name="description"
                 rows={5}
+                defaultValue={spot?.description ?? ""}
                 placeholder="A cliffside view with layered sea haze, lantern glow, and open sky for portraits."
               />
             </Field>
             <Field label="Tags (optional)" htmlFor="spot-tags">
-              <Input id="spot-tags" name="tags" placeholder="scenery, sunset, ocean, portraits" />
+              <Input
+                id="spot-tags"
+                name="tags"
+                defaultValue={spot?.tags?.join(", ") ?? ""}
+                placeholder="scenery, sunset, ocean, portraits"
+              />
             </Field>
           </div>
         </section>
@@ -321,16 +464,16 @@ export function SubmitSpotForm() {
           <SectionHeading eyebrow="Images" title="Upload screenshots" />
           <div
             className={`mt-5 flex min-h-44 flex-col items-center justify-center rounded-lg border border-dashed px-4 py-8 text-center transition ${
-              selectedImages.length >= 2
+              totalImages >= 2
                 ? "border-border-subtle bg-surface-base/70 opacity-70"
                 : "border-border-strong bg-surface-base"
             }`}
           >
             <span className="text-sm font-semibold text-text-primary">
-              {selectedImages.length >= 2 ? "Screenshot limit reached" : "Choose images"}
+              {totalImages >= 2 ? "Screenshot limit reached" : "Choose images"}
             </span>
             <span className="mt-2 max-w-sm text-sm leading-6 text-text-secondary">
-              {selectedImages.length >= 2
+              {totalImages >= 2
                 ? "Remove one screenshot to choose a different image."
                 : "JPG, PNG, or WebP screenshot. You can add a second angle when it helps."}
             </span>
@@ -338,7 +481,7 @@ export function SubmitSpotForm() {
               type="button"
               variant="secondary"
               className="mt-4"
-              disabled={selectedImages.length >= 2}
+              disabled={totalImages >= 2}
               onClick={() => imageInputRef.current?.click()}
             >
               Browse screenshots
@@ -350,7 +493,7 @@ export function SubmitSpotForm() {
               type="file"
               accept="image/jpeg,image/png,image/webp"
               multiple
-              disabled={selectedImages.length >= 2}
+              disabled={totalImages >= 2}
               className="hidden"
               onChange={(event) => {
                 const pickedFiles = Array.from(event.currentTarget.files ?? []);
@@ -360,7 +503,7 @@ export function SubmitSpotForm() {
                   const currentKeys = new Set(currentImages.map((image) => fileKey(image.file)));
 
                   for (const file of pickedFiles) {
-                    if (nextImages.length >= 2) {
+                    if (nextImages.length + existingImages.length >= 2) {
                       break;
                     }
 
@@ -377,12 +520,46 @@ export function SubmitSpotForm() {
                     });
                   }
 
-                  return nextImages.slice(0, 2);
+                  return nextImages.slice(0, Math.max(0, 2 - existingImages.length));
                 });
                 setImageInputKey((key) => key + 1);
               }}
             />
           </div>
+          {existingImages.length > 0 ? (
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              {existingImages.map((image) => (
+                <li key={image.id} className="overflow-hidden rounded-lg border border-border-subtle bg-surface-base">
+                  <div className="relative">
+                    <img src={image.url} alt={image.alt ?? ""} className="aspect-video w-full object-cover" />
+                    <button
+                      type="button"
+                      aria-label="Remove existing screenshot"
+                      className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border border-border-default bg-surface-base/90 text-lg leading-none text-text-primary backdrop-blur transition hover:border-danger/70 hover:text-danger"
+                      onClick={() => {
+                        if (
+                          isReviewMode &&
+                          !window.confirm("Remove this screenshot from the submission and storage bucket?")
+                        ) {
+                          return;
+                        }
+
+                        setExistingImages((currentImages) =>
+                          currentImages.filter((currentImage) => currentImage.id !== image.id),
+                        );
+                      }}
+                    >
+                      x
+                    </button>
+                  </div>
+                  <div className="space-y-1 px-3 py-2">
+                    <p className="truncate text-sm font-semibold text-text-primary">Existing screenshot</p>
+                    <p className="text-xs text-text-muted">Kept unless removed</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           {selectedImages.length > 0 ? (
             <ul className="mt-4 grid gap-3 sm:grid-cols-2">
               {selectedImages.map((image) => (
@@ -424,7 +601,7 @@ export function SubmitSpotForm() {
             <SummaryRow label="Expansion" value={metadata?.expansion ?? "Unknown"} />
             <SummaryRow label="Landmark" value={visibleLandmark?.name ?? "None nearby"} />
             <SummaryRow label="Title hint" value={suggestedTitle} />
-            <SummaryRow label="Images" value={selectedImages.length ? String(selectedImages.length) : "None"} />
+            <SummaryRow label="Images" value={totalImages ? String(totalImages) : "None"} />
           </dl>
           {submitFeedback && hasSubmitted ? (
             <p
@@ -440,23 +617,61 @@ export function SubmitSpotForm() {
             </p>
           ) : null}
           <div className="mt-5 grid gap-2">
-            <Button type="submit" size="lg" disabled={isSubmitting}>
-              {isSubmitting ? "Processing..." : "Submit spot"}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={isSubmitting}
-              onClick={(event) => {
-                const form = event.currentTarget.form;
+            {isReviewMode ? (
+              <>
+                <Button
+                  type="button"
+                  size="lg"
+                  disabled={isSubmitting}
+                  onClick={(event) => {
+                    const form = event.currentTarget.form;
 
-                if (form) {
-                  void saveSpot("draft", form);
-                }
-              }}
-            >
-              {isSubmitting ? "Processing..." : "Save draft"}
-            </Button>
+                    if (form) {
+                      void saveSpot("accept", form);
+                    }
+                  }}
+                >
+                  {isSubmitting ? "Processing..." : "Save and accept"}
+                </Button>
+                <Button type="submit" variant="secondary" disabled={isSubmitting}>
+                  {isSubmitting ? "Processing..." : "Save and return"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  disabled={isSubmitting}
+                  onClick={(event) => {
+                    const form = event.currentTarget.form;
+
+                    if (form) {
+                      void saveSpot("delete", form);
+                    }
+                  }}
+                >
+                  {isSubmitting ? "Processing..." : "Delete"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button type="submit" size="lg" disabled={isSubmitting}>
+                  {isSubmitting ? "Processing..." : "Submit spot"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={isSubmitting}
+                  onClick={(event) => {
+                    const form = event.currentTarget.form;
+
+                    if (form) {
+                      void saveSpot("draft", form);
+                    }
+                  }}
+                >
+                  {isSubmitting ? "Processing..." : "Save draft"}
+                </Button>
+              </>
+            )}
           </div>
         </section>
       </aside>
@@ -471,6 +686,45 @@ function SectionHeading({ eyebrow, title }: Readonly<{ eyebrow: string; title: s
       <h2 className="mt-1 text-2xl font-semibold text-text-primary">{title}</h2>
     </div>
   );
+}
+
+function SummaryItem({ label, value }: Readonly<{ label: string; value: string }>) {
+  return (
+    <div className="rounded-lg border border-border-subtle bg-surface-base px-3 py-2">
+      <dt className="text-xs text-text-muted">{label}</dt>
+      <dd className="mt-1 text-sm font-semibold text-text-primary">{value}</dd>
+    </div>
+  );
+}
+
+function normalizeEditAction(action: SubmitMode | EditAction): EditAction {
+  if (action === "draft") {
+    return "save_draft";
+  }
+
+  if (action === "submitted") {
+    return "submit";
+  }
+
+  return action;
+}
+
+function getPendingMessage(action: SubmitMode | EditAction) {
+  switch (action) {
+    case "draft":
+    case "save_draft":
+      return "Saving draft...";
+    case "revoke":
+      return "Revoking submission...";
+    case "save_review":
+      return "Saving review changes...";
+    case "accept":
+      return "Accepting spot...";
+    case "delete":
+      return "Deleting spot...";
+    default:
+      return "Submitting spot...";
+  }
 }
 
 function SubmissionCompleteCard({ state, slug }: Readonly<{ state: SubmitMode; slug: string }>) {

@@ -12,8 +12,62 @@ type UserMenuProps = Readonly<{
 
 export function UserMenu({ avatarUrl, displayName, profileHref }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const menuId = useId();
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    let controller = new AbortController();
+
+    async function refreshUnreadCount() {
+      controller.abort();
+      controller = new AbortController();
+      const activeController = controller;
+
+      try {
+        const response = await fetch("/api/notifications/unread-count", {
+          signal: activeController.signal,
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = (await response.json()) as { count?: number };
+
+        if (isMounted) {
+          setUnreadCount(payload.count ?? 0);
+        }
+      } catch (error) {
+        if (!activeController.signal.aborted) {
+          console.error(error);
+        }
+      }
+    }
+
+    function handleFocus() {
+      void refreshUnreadCount();
+    }
+
+    void refreshUnreadCount();
+    const interval = window.setInterval(() => {
+      void refreshUnreadCount();
+    }, 5 * 60 * 1000);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+      window.clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []);
+
+  useEffect(() => {
+    const baseTitle = document.title.replace(/^\(\d+\)\s+/, "");
+    document.title = unreadCount > 0 ? `(${unreadCount}) ${baseTitle}` : baseTitle;
+  }, [unreadCount]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -57,6 +111,12 @@ export function UserMenu({ avatarUrl, displayName, profileHref }: UserMenuProps)
           <FallbackAvatar />
         )}
       </button>
+      {unreadCount > 0 ? (
+        <span
+          className="absolute -right-0.5 -top-0.5 z-50 h-3 w-3 rounded-full border-2 border-surface-base bg-brand-spark"
+          aria-label={`${unreadCount} unread notifications`}
+        />
+      ) : null}
       {isOpen ? (
         <div
           id={menuId}
@@ -73,6 +133,19 @@ export function UserMenu({ avatarUrl, displayName, profileHref }: UserMenuProps)
             onClick={() => setIsOpen(false)}
           >
             Profile
+          </Link>
+          <Link
+            href="/notifications"
+            className="flex items-center justify-between gap-3 px-3 py-2 text-sm font-semibold text-text-secondary transition hover:bg-surface-overlay hover:text-text-primary"
+            role="menuitem"
+            onClick={() => setIsOpen(false)}
+          >
+            <span>Notifications</span>
+            {unreadCount > 0 ? (
+              <span className="rounded-full border border-brand-spark/45 bg-brand-spark/10 px-2 py-0.5 text-xs text-brand-spark">
+                {unreadCount}
+              </span>
+            ) : null}
           </Link>
           <form action="/auth/logout" method="post">
             <button

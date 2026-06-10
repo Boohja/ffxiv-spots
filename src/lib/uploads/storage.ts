@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import sharp from "sharp";
 
 export type UploadResult = {
@@ -53,6 +53,15 @@ export async function uploadImageFile(
     size: processed.buffer.byteLength,
     contentType: "image/webp",
   };
+}
+
+export async function deleteStoredImage(storageKey: string) {
+  await getR2Client().send(
+    new DeleteObjectCommand({
+      Bucket: getRequiredEnv("R2_BUCKET_NAME"),
+      Key: storageKey,
+    }),
+  );
 }
 
 function validateImageFile(file: File) {

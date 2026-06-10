@@ -6,6 +6,7 @@ import { ImageGallery } from "@/components/spots/ImageGallery";
 import { SpotGrid } from "@/components/spots/SpotGrid";
 import { TagPill } from "@/components/spots/TagPill";
 import { getRelatedSpots, getSpotBySlug, photoSpots } from "@/lib/spots/data";
+import type { UserRole } from "@/lib/spots/types";
 import { createClient } from "@/lib/supabase/server";
 import { getZoneMetadata } from "@/lib/spots/zones";
 
@@ -67,7 +68,9 @@ export default async function SpotDetailPage({ params }: SpotDetailPageProps) {
       notFound();
     }
 
-    return <DatabaseSpotPlaceholder spot={databaseSpot} />;
+    const canEdit = await canViewerEditSpots();
+
+    return <DatabaseSpotPlaceholder canEdit={canEdit} spot={databaseSpot} />;
   }
 
   const related = getRelatedSpots(spot);
@@ -150,7 +153,32 @@ async function getDatabaseSpotBySlug(slug: string) {
   return data;
 }
 
-function DatabaseSpotPlaceholder({ spot }: Readonly<{ spot: DatabaseSpot }>) {
+async function canViewerEditSpots() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return false;
+  }
+
+  const { data } = await supabase
+    .from("app_users")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle<{ role: UserRole }>();
+
+  return data?.role === "moderator" || data?.role === "admin";
+}
+
+function DatabaseSpotPlaceholder({
+  canEdit,
+  spot,
+}: Readonly<{
+  canEdit: boolean;
+  spot: DatabaseSpot;
+}>) {
   const zone = getZoneMetadata(spot.zone);
   const statusLabel = spot.state === "submitted" ? "Waiting for review" : spot.state;
 
@@ -173,6 +201,14 @@ function DatabaseSpotPlaceholder({ spot }: Readonly<{ spot: DatabaseSpot }>) {
         <p className="mt-6 text-sm leading-6 text-text-secondary">
           {spot.description ?? "The full spot view for database-backed submissions is coming next."}
         </p>
+        {canEdit ? (
+          <Link
+            href={`/spots/${spot.slug}/edit`}
+            className="mt-5 inline-flex h-10 items-center justify-center rounded-lg border border-border-default bg-surface-elevated px-4 text-sm font-semibold text-text-primary transition hover:border-border-active/60 hover:bg-surface-overlay"
+          >
+            Edit
+          </Link>
+        ) : null}
       </section>
     </main>
   );

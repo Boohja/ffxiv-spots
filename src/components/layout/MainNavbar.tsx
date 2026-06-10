@@ -2,18 +2,36 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { AuthMenu } from "@/components/layout/AuthMenu";
-import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { createClient } from "@/lib/supabase/server";
 
-const links = [
+const publicLinks = [
   { href: "/", label: "Discover" },
   { href: "/spots", label: "Browse" },
-  { href: "/spots/submit", label: "Submit" },
   { href: "/favorites", label: "Favorites" },
   { href: "/spots?sort=featured", label: "Curated" },
 ];
 
-export function MainNavbar() {
+export async function MainNavbar() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: appProfile } = user
+    ? await supabase
+        .from("app_users")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle<{ role: string | null }>()
+    : { data: null };
+  const links = [
+    ...publicLinks,
+    user ? { href: "/spots/mine", label: "My spots" } : null,
+    appProfile?.role === "moderator" || appProfile?.role === "admin"
+      ? { href: "/moderation/spots", label: "Review" }
+      : null,
+  ].filter((link): link is { href: string; label: string } => Boolean(link));
+
   return (
     <header className="relative z-50 border-b border-border-subtle/60 bg-surface-base">
       <nav className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3">
@@ -91,12 +109,6 @@ export function MainNavbar() {
             </form>
           </div>
           <div className="flex items-center gap-2">
-            <Link
-              href="/spots/submit"
-              className="inline-flex h-9 items-center justify-center rounded-lg border border-border-default bg-surface-elevated px-3 text-xs font-semibold text-text-primary transition-all hover:border-border-active/60 hover:bg-surface-overlay focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-active/70 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
-            >
-              Submit spot
-            </Link>
             <AuthMenu />
           </div>
         </div>
@@ -112,11 +124,6 @@ export function MainNavbar() {
               </Link>
             </li>
           ))}
-          <li className="ml-auto md:hidden">
-            <Button variant="icon" aria-label="Search">
-              ⌕
-            </Button>
-          </li>
         </ul>
       </nav>
     </header>

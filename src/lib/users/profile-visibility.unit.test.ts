@@ -30,6 +30,11 @@ describe("canViewUserProfile", () => {
     expect(canViewUserProfile({ id: profileId, public: false }, otherUserId)).toBe(false);
   });
 
+  it("allows moderators and admins to view private profiles", () => {
+    expect(canViewUserProfile({ id: profileId, public: false }, otherUserId, "moderator")).toBe(true);
+    expect(canViewUserProfile({ id: profileId, public: false }, otherUserId, "admin")).toBe(true);
+  });
+
   it("allows the owner to view their own private profile", () => {
     expect(canViewUserProfile({ id: profileId, public: false }, profileId)).toBe(true);
   });
