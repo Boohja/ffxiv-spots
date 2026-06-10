@@ -1,3 +1,5 @@
+import type { Expansion } from "@/lib/spots/zones";
+
 export type Coordinates = {
   x: number;
   y: number;
@@ -20,7 +22,7 @@ export type PhotoSpot = {
   zone: string;
   area?: string;
   coordinates?: Coordinates;
-  expansion?: string;
+  expansion: Expansion;
   tags: string[];
   bestTimeOfDay?: string[];
   bestWeather?: string[];
@@ -31,6 +33,8 @@ export type PhotoSpot = {
   updatedAt: string;
 };
 
+export type PhotoSpotInput = Omit<PhotoSpot, "region" | "expansion">;
+
 export type ModerationStatus = "pending" | "approved" | "rejected" | "needs_changes";
 
 export type UserRole = "guest" | "submitter" | "trusted_submitter" | "moderator" | "admin";
@@ -39,7 +43,7 @@ export type SpotSubmission = {
   id: string;
   submittedBy?: string;
   status: ModerationStatus;
-  spotData: Omit<PhotoSpot, "id" | "createdAt" | "updatedAt">;
+  spotData: Omit<PhotoSpotInput, "id" | "createdAt" | "updatedAt">;
   possibleDuplicates?: string[];
   reviewerNotes?: string;
   createdAt: string;

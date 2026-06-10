@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 const links = [
   { href: "/", label: "Discover" },
   { href: "/spots", label: "Browse" },
+  { href: "/spots/submit", label: "Submit" },
   { href: "/favorites", label: "Favorites" },
   { href: "/spots?sort=featured", label: "Curated" },
 ];
@@ -90,9 +91,12 @@ export function MainNavbar() {
             </form>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" type="button" disabled title="Submission flow placeholder">
+            <Link
+              href="/spots/submit"
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-border-default bg-surface-elevated px-3 text-xs font-semibold text-text-primary transition-all hover:border-border-active/60 hover:bg-surface-overlay focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-active/70 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+            >
               Submit spot
-            </Button>
+            </Link>
             <AuthMenu />
           </div>
         </div>

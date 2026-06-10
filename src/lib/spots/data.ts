@@ -1,17 +1,16 @@
-import type { PhotoSpot } from "@/lib/spots/types";
+import type { PhotoSpot, PhotoSpotInput } from "@/lib/spots/types";
+import { getZoneMetadata } from "@/lib/spots/zones";
 
-export const photoSpots = [
+const spotInputs = [
   {
     id: "spot-001",
     slug: "mistfall-overlook",
     title: "Mistfall Overlook",
     description:
       "A cliffside view with layered sea haze, lantern glow, and enough open sky for dramatic portrait framing.",
-    region: "La Noscea",
     zone: "Upper La Noscea",
     area: "Oakwood",
     coordinates: { x: 30.4, y: 22.8 },
-    expansion: "A Realm Reborn",
     tags: ["scenery", "sunset", "ocean", "portraits"],
     bestTimeOfDay: ["sunset", "night"],
     bestWeather: ["clear skies", "fair skies"],
@@ -34,11 +33,9 @@ export const photoSpots = [
     title: "Moonveil Bridge",
     description:
       "A quiet forest crossing where blue flora, still water, and lanterns make low-light portraits feel soft.",
-    region: "The Black Shroud",
     zone: "Central Shroud",
     area: "Bentbranch",
     coordinates: { x: 20.8, y: 24.2 },
-    expansion: "A Realm Reborn",
     tags: ["forest", "night", "roleplay", "flowers"],
     bestTimeOfDay: ["night"],
     bestWeather: ["fair skies", "fog"],
@@ -61,11 +58,9 @@ export const photoSpots = [
     title: "Aurora Watch",
     description:
       "A high terrace with clean silhouettes, aurora color, and a strong leading line toward distant peaks.",
-    region: "Coerthas",
     zone: "Coerthas Western Highlands",
     area: "Falcon's Nest",
     coordinates: { x: 15.6, y: 12.1, z: 1.4 },
-    expansion: "Heavensward",
     tags: ["snow", "mountains", "night", "wide shots"],
     bestTimeOfDay: ["night", "dawn"],
     bestWeather: ["clear skies", "snow"],
@@ -88,11 +83,9 @@ export const photoSpots = [
     title: "Sapphire Market Roofs",
     description:
       "Layered rooftops and hanging lamps create compact urban compositions for fashion plates and casual portraits.",
-    region: "Thanalan",
     zone: "Ul'dah - Steps of Thal",
     area: "Sapphire Avenue Exchange",
     coordinates: { x: 13.7, y: 10.9 },
-    expansion: "A Realm Reborn",
     tags: ["city", "golden hour", "portraits", "easy access"],
     bestTimeOfDay: ["afternoon", "sunset"],
     bestWeather: ["clear skies", "fair skies"],
@@ -114,11 +107,9 @@ export const photoSpots = [
     title: "Lilac Rain Pavilion",
     description:
       "A sheltered garden corner with reflective stone, soft blossoms, and a calmer mood during rain or fog.",
-    region: "Hingashi",
     zone: "Kugane",
     area: "Bokairo Inn",
     coordinates: { x: 10.2, y: 9.7 },
-    expansion: "Stormblood",
     tags: ["garden", "rain", "roleplay", "architecture"],
     bestTimeOfDay: ["morning", "night"],
     bestWeather: ["rain", "fog"],
@@ -140,11 +131,9 @@ export const photoSpots = [
     title: "Last Light Ridge",
     description:
       "A sparse ridge with a huge skybox, quiet negative space, and enough distance for scenery-led screenshots.",
-    region: "Norvrandt",
     zone: "Lakeland",
     area: "The Ostall Imperative",
     coordinates: { x: 26.8, y: 15.4 },
-    expansion: "Shadowbringers",
     tags: ["scenery", "wide shots", "dawn", "relaxing"],
     bestTimeOfDay: ["dawn", "sunset"],
     bestWeather: ["clear skies", "gloom"],
@@ -160,7 +149,19 @@ export const photoSpots = [
     createdAt: "2026-06-05T16:00:00.000Z",
     updatedAt: "2026-06-05T16:00:00.000Z",
   },
-] satisfies PhotoSpot[];
+] satisfies PhotoSpotInput[];
+
+export const photoSpots = spotInputs.map(enrichSpot) satisfies PhotoSpot[];
+
+function enrichSpot(spot: PhotoSpotInput): PhotoSpot {
+  const { region, expansion } = getZoneMetadata(spot.zone);
+
+  return {
+    ...spot,
+    region,
+    expansion,
+  };
+}
 
 export function getSpotBySlug(slug: string) {
   return photoSpots.find((spot) => spot.slug === slug);

@@ -6,10 +6,32 @@ import { ImageGallery } from "@/components/spots/ImageGallery";
 import { SpotGrid } from "@/components/spots/SpotGrid";
 import { TagPill } from "@/components/spots/TagPill";
 import { getRelatedSpots, getSpotBySlug, photoSpots } from "@/lib/spots/data";
+import { createClient } from "@/lib/supabase/server";
+import { getZoneMetadata } from "@/lib/spots/zones";
 
 type SpotDetailPageProps = Readonly<{
   params: Promise<{ slug: string }>;
 }>;
+
+type DatabaseSpot = {
+  id: string;
+  slug: string;
+  state: "draft" | "submitted" | "accepted" | "duplicate";
+  zone: string;
+  x: number;
+  y: number;
+  z: number | null;
+  title: string;
+  description: string | null;
+  tags: string[] | null;
+  access_notes: string | null;
+  landmark_id: number | null;
+  spot_images: {
+    url: string;
+    alt: string | null;
+    sort_order: number;
+  }[];
+};
 
 export function generateStaticParams() {
   return photoSpots.map((spot) => ({ slug: spot.slug }));
@@ -20,8 +42,11 @@ export async function generateMetadata({ params }: SpotDetailPageProps): Promise
   const spot = getSpotBySlug(slug);
 
   if (!spot) {
+    const databaseSpot = await getDatabaseSpotBySlug(slug);
+
     return {
-      title: "Spot not found | XIVSpots",
+      title: databaseSpot ? `${databaseSpot.title} | XIVSpots` : "Spot not found | XIVSpots",
+      description: databaseSpot?.description ?? undefined,
     };
   }
 
@@ -36,7 +61,13 @@ export default async function SpotDetailPage({ params }: SpotDetailPageProps) {
   const spot = getSpotBySlug(slug);
 
   if (!spot) {
-    notFound();
+    const databaseSpot = await getDatabaseSpotBySlug(slug);
+
+    if (!databaseSpot) {
+      notFound();
+    }
+
+    return <DatabaseSpotPlaceholder spot={databaseSpot} />;
   }
 
   const related = getRelatedSpots(spot);
@@ -100,6 +131,59 @@ export default async function SpotDetailPage({ params }: SpotDetailPageProps) {
         <SpotGrid spots={related} />
       </section>
     </main>
+  );
+}
+
+async function getDatabaseSpotBySlug(slug: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("spots")
+    .select("id,slug,state,zone,x,y,z,title,description,tags,access_notes,landmark_id,spot_images(url,alt,sort_order)")
+    .eq("slug", slug)
+    .maybeSingle<DatabaseSpot>();
+
+  if (error) {
+    console.error(error);
+    return null;
+  }
+
+  return data;
+}
+
+function DatabaseSpotPlaceholder({ spot }: Readonly<{ spot: DatabaseSpot }>) {
+  const zone = getZoneMetadata(spot.zone);
+  const statusLabel = spot.state === "submitted" ? "Waiting for review" : spot.state;
+
+  return (
+    <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-10">
+      <Link href="/spots" className="text-sm font-semibold text-amber-200 hover:text-amber-100">
+        Back to spots
+      </Link>
+      <section className="glass-panel rounded-lg p-6">
+        <p className="text-sm font-semibold uppercase text-brand-spark">{statusLabel}</p>
+        <h1 className="mt-2 text-4xl font-semibold text-text-primary">{spot.title}</h1>
+        <p className="mt-3 text-text-secondary">
+          {spot.zone} / {zone.region} / {zone.expansion}
+        </p>
+        <dl className="mt-6 grid gap-3 sm:grid-cols-3">
+          <SummaryItem label="Coordinates" value={formatCoordinates({ x: spot.x, y: spot.y, z: spot.z ?? undefined }) ?? ""} />
+          <SummaryItem label="Images" value={String(spot.spot_images.length)} />
+          <SummaryItem label="State" value={spot.state} />
+        </dl>
+        <p className="mt-6 text-sm leading-6 text-text-secondary">
+          {spot.description ?? "The full spot view for database-backed submissions is coming next."}
+        </p>
+      </section>
+    </main>
+  );
+}
+
+function SummaryItem({ label, value }: Readonly<{ label: string; value: string }>) {
+  return (
+    <div className="rounded-lg border border-border-subtle bg-surface-base px-3 py-2">
+      <dt className="text-xs text-text-muted">{label}</dt>
+      <dd className="mt-1 text-sm font-semibold text-text-primary">{value}</dd>
+    </div>
   );
 }
 
