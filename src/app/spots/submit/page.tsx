@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { SubmitSpotForm } from "@/components/spots/SubmitSpotForm";
+import type { UserRole } from "@/lib/spots/types";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -19,6 +20,9 @@ export default async function SubmitSpotPage() {
     redirect("/auth/login?next=/spots/submit");
   }
 
+  const viewerRole = await getViewerRole(supabase, user.id);
+  const canAcceptOnCreate = viewerRole === "moderator" || viewerRole === "admin";
+
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-10">
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
@@ -34,7 +38,20 @@ export default async function SubmitSpotPage() {
         </p>
       </div>
 
-      <SubmitSpotForm />
+      <SubmitSpotForm canAcceptOnCreate={canAcceptOnCreate} />
     </main>
   );
+}
+
+async function getViewerRole(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+) {
+  const { data } = await supabase
+    .from("app_users")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle<{ role: UserRole }>();
+
+  return data?.role ?? null;
 }

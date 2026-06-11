@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
+import { parseSpotTags } from "@/lib/spots/tags";
 import { createClient } from "@/lib/supabase/server";
 import { uploadImageFile, UploadValidationError } from "@/lib/uploads/storage";
 import { zonesByName } from "@/lib/spots/zones";
@@ -9,11 +10,12 @@ import { zonesByName } from "@/lib/spots/zones";
 export const runtime = "nodejs";
 
 const maxImages = 2;
-const spotStates = new Set(["draft", "submitted"]);
+const spotStates = new Set(["draft", "submitted", "accepted"]);
 const defaultMaxDraftsPerUser = 5;
 const defaultMaxPendingSpotsPerUser = 10;
 
-type SpotState = "draft" | "submitted";
+type SpotState = "draft" | "submitted" | "accepted";
+type AppRole = "submitter" | "trusted_submitter" | "moderator" | "admin";
 
 export async function POST(request: Request) {
   try {
@@ -36,10 +38,12 @@ export async function POST(request: Request) {
     const description = stringValue(formData.get("description"));
     const accessNotes = stringValue(formData.get("accessibilityNotes"));
     const landmarkId = parseOptionalInteger(formData.get("landmarkId"));
-    const tags = parseTags(formData.get("tags"));
+    const tags = parseSpotTags(formData.get("tags"));
     const files = formData
       .getAll("images")
       .filter((value): value is File => value instanceof File);
+    const viewerRole = await getViewerRole(supabase, user.id);
+    const isReviewer = viewerRole === "moderator" || viewerRole === "admin";
 
     const validationError = validateSpotInput({
       files,
@@ -54,6 +58,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
+    if (state === "accepted" && !isReviewer) {
+      return NextResponse.json({ error: "Only reviewers can immediately accept spots." }, { status: 403 });
+    }
+
     const validState = state;
     const validZone = zone;
     const validX = x;
@@ -64,7 +72,8 @@ export async function POST(request: Request) {
     }
 
     const validTitle = submittedTitle ?? `${validZone} photo spot`;
-    const quotaError = await validateUserQuota(supabase, user.id, validState);
+    const quotaError =
+      validState === "accepted" ? undefined : await validateUserQuota(supabase, user.id, validState);
 
     if (quotaError) {
       return NextResponse.json({ error: quotaError }, { status: 400 });
@@ -72,12 +81,13 @@ export async function POST(request: Request) {
 
     const spotId = randomUUID();
     const slug = await createUniqueSlug(supabase, validTitle);
+    const insertState = validState === "accepted" ? "submitted" : validState;
 
     const { error: spotError } = await supabase.from("spots").insert({
       id: spotId,
       slug,
       submitted_by: user.id,
-      state: validState,
+      state: insertState,
       landmark_id: landmarkId,
       zone: validZone,
       x: validX,
@@ -114,6 +124,21 @@ export async function POST(request: Request) {
       }
     }
 
+    if (validState === "accepted") {
+      const { error: acceptError } = await supabase
+        .from("spots")
+        .update({
+          state: "accepted",
+          accepted_at: new Date().toISOString(),
+          accepted_by: user.id,
+        })
+        .eq("id", spotId);
+
+      if (acceptError) {
+        throw acceptError;
+      }
+    }
+
     return NextResponse.json(
       {
         spot: {
@@ -133,6 +158,20 @@ export async function POST(request: Request) {
     console.error(error);
     return NextResponse.json({ error: "Could not save spot." }, { status: 500 });
   }
+}
+
+async function getViewerRole(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const { data, error } = await supabase
+    .from("app_users")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle<{ role: AppRole }>();
+
+  if (error) {
+    throw error;
+  }
+
+  return data?.role ?? null;
 }
 
 function validateSpotInput({
@@ -166,7 +205,7 @@ function validateSpotInput({
     return "Enter a valid Z coordinate or leave it empty.";
   }
 
-  if (state === "submitted" && files.length === 0) {
+  if ((state === "submitted" || state === "accepted") && files.length === 0) {
     return "Choose a screenshot.";
   }
 
@@ -258,18 +297,6 @@ function parseOptionalInteger(value: FormDataEntryValue | null) {
   }
 
   return Number(value);
-}
-
-function parseTags(value: FormDataEntryValue | null) {
-  if (typeof value !== "string") {
-    return [];
-  }
-
-  return value
-    .split(",")
-    .map((tag) => tag.trim().toLowerCase())
-    .filter(Boolean)
-    .slice(0, 12);
 }
 
 function isValidCoordinate(value: number, min: number, max: number) {

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SubmitSpotForm } from "@/components/spots/SubmitSpotForm";
+import type { EditableSpotFormValue } from "@/components/spots/SubmitSpotForm";
 
 const pushMock = vi.fn();
 
@@ -34,6 +35,31 @@ function expectReviewImageCount(value: string) {
   const reviewImageLabel = imageLabels[imageLabels.length - 1];
 
   expect(reviewImageLabel.nextElementSibling).toHaveTextContent(value);
+}
+
+function makeEditableSpot(overrides: Partial<EditableSpotFormValue> = {}): EditableSpotFormValue {
+  return {
+    id: "spot-1",
+    slug: "accepted-overlook",
+    state: "accepted",
+    zone: "Upper La Noscea",
+    x: 10,
+    y: 20,
+    z: null,
+    title: "Accepted Overlook",
+    description: null,
+    tags: [],
+    access_notes: null,
+    updated_at: "2026-06-11T12:00:00.000Z",
+    images: [
+      {
+        id: "image-1",
+        url: "https://example.test/spot.webp",
+        alt: "Accepted Overlook",
+      },
+    ],
+    ...overrides,
+  };
 }
 
 describe("SubmitSpotForm", () => {
@@ -116,5 +142,20 @@ describe("SubmitSpotForm", () => {
     expect(await screen.findByText("Saving draft...")).toBeInTheDocument();
     expect(await screen.findByText("Draft saved")).toBeInTheDocument();
     expect(screen.getByText("Your spot draft was saved.")).toBeInTheDocument();
+  });
+
+  it("hides save and accept when reviewing an already accepted spot", () => {
+    render(<SubmitSpotForm mode="review" spot={makeEditableSpot()} />);
+
+    expect(screen.queryByRole("button", { name: "Save and accept" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save and return" })).toBeInTheDocument();
+  });
+
+  it("shows save and accept for staff creating a new spot", () => {
+    render(<SubmitSpotForm canAcceptOnCreate />);
+
+    expect(screen.getByRole("button", { name: "Save and accept" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Submit spot" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save draft" })).toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createNotification } from "@/lib/notifications/server";
+import { parseSpotTags } from "@/lib/spots/tags";
 import { zonesByName } from "@/lib/spots/zones";
 import { createClient } from "@/lib/supabase/server";
 import { deleteStoredImage, uploadImageFile, UploadValidationError } from "@/lib/uploads/storage";
@@ -103,11 +104,13 @@ export async function PATCH(request: Request, context: RouteContext) {
 
       const deletionReason = stringValue(formData.get("deletionReason"));
 
-      await createNotification({
-        recipient: spot.submitted_by,
-        title: `Your submission "${spot.title}" was deleted`,
-        message: buildDeletionMessage(deletionReason),
-      });
+      if (spot.submitted_by !== user.id) {
+        await createNotification({
+          recipient: spot.submitted_by,
+          title: `Your submission "${spot.title}" was deleted`,
+          message: buildDeletionMessage(deletionReason),
+        });
+      }
       await deleteImagesFromStorage(spot.spot_images);
       const { error } = await supabase.from("spots").delete().eq("id", spot.id);
 
@@ -232,7 +235,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       }
     }
 
-    if (action === "accept" && spot.state !== "accepted") {
+    if (action === "accept" && spot.state !== "accepted" && spot.submitted_by !== user.id) {
       await createNotification({
         recipient: spot.submitted_by,
         title: `Your submission "${input.title ?? spot.title}" was accepted`,
@@ -291,7 +294,7 @@ function parseSpotInput(formData: FormData) {
     title: stringValue(formData.get("title")),
     description: stringValue(formData.get("description")),
     accessNotes: stringValue(formData.get("accessibilityNotes")),
-    tags: parseTags(formData.get("tags")),
+    tags: parseSpotTags(formData.get("tags")),
   };
 }
 
@@ -382,18 +385,6 @@ function parseOptionalCoordinate(value: FormDataEntryValue | null) {
   const coordinate = Number(value);
 
   return Number.isFinite(coordinate) ? coordinate : undefined;
-}
-
-function parseTags(value: FormDataEntryValue | null) {
-  if (typeof value !== "string") {
-    return [];
-  }
-
-  return value
-    .split(",")
-    .map((tag) => tag.trim().toLowerCase())
-    .filter(Boolean)
-    .slice(0, 12);
 }
 
 function isValidCoordinate(value: number, min: number, max: number) {

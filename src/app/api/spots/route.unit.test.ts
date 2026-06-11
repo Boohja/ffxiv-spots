@@ -25,11 +25,13 @@ type SupabaseHarness = {
   };
   imageInserts: ImageRow[][];
   spotInserts: SpotRow[];
+  spotUpdates: SpotRow[];
 };
 
 type HarnessOptions = {
   draftCount?: number;
   pendingCount?: number;
+  role?: "submitter" | "trusted_submitter" | "moderator" | "admin" | null;
   userId?: string;
 };
 
@@ -68,6 +70,14 @@ class SpotsQuery {
     return Promise.resolve({ error: null });
   }
 
+  update(row: SpotRow) {
+    this.harness.spotUpdates.push(row);
+
+    return {
+      eq: vi.fn().mockResolvedValue({ error: null }),
+    };
+  }
+
   then<TResult1 = { count: number; error: null }, TResult2 = never>(
     resolve?: ((value: { count: number; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
     reject?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
@@ -86,10 +96,30 @@ class SpotImagesQuery {
   }
 }
 
+class AppUsersQuery {
+  constructor(private readonly options: Required<HarnessOptions>) {}
+
+  select() {
+    return this;
+  }
+
+  eq() {
+    return this;
+  }
+
+  maybeSingle() {
+    return Promise.resolve({
+      data: this.options.role ? { role: this.options.role } : null,
+      error: null,
+    });
+  }
+}
+
 function makeHarness(options: HarnessOptions = {}) {
   const normalizedOptions = {
     draftCount: options.draftCount ?? 0,
     pendingCount: options.pendingCount ?? 0,
+    role: options.role ?? "submitter",
     userId: options.userId ?? "user-1",
   };
   const harness: SupabaseHarness = {
@@ -110,11 +140,16 @@ function makeHarness(options: HarnessOptions = {}) {
           return new SpotImagesQuery(harness);
         }
 
+        if (table === "app_users") {
+          return new AppUsersQuery(normalizedOptions);
+        }
+
         throw new Error(`Unexpected table ${table}`);
       }),
     },
     imageInserts: [],
     spotInserts: [],
+    spotUpdates: [],
   };
 
   vi.mocked(createClient).mockResolvedValue(harness.client as never);
@@ -174,7 +209,7 @@ describe("POST /api/spots", () => {
           x: "10.4",
           y: "20.1",
           title: "",
-          tags: "beach, sunset, beach",
+          tags: "Beach, sunset, beach",
         }),
       ),
     );
@@ -189,7 +224,7 @@ describe("POST /api/spots", () => {
       x: 10.4,
       y: 20.1,
       title: "Upper La Noscea photo spot",
-      tags: ["beach", "sunset", "beach"],
+      tags: ["beach", "sunset"],
     });
     expect(harness.imageInserts).toEqual([]);
     expect(await responseJson(response)).toMatchObject({
@@ -259,6 +294,70 @@ describe("POST /api/spots", () => {
         }),
       ],
     ]);
+  });
+
+  it("lets reviewers create and immediately accept a spot", async () => {
+    const harness = makeHarness({ role: "moderator" });
+    const file = new File(["jpg bytes"], "spot.jpg", { type: "image/jpeg" });
+
+    vi.mocked(uploadImageFile).mockResolvedValue({
+      key: "spots/spot-id/spot.webp",
+      url: "https://example.test/spot.webp",
+      width: 1280,
+      height: 720,
+      size: 12345,
+      contentType: "image/webp",
+    });
+
+    const response = await POST(
+      makeRequest(
+        makeFormData({
+          state: "accepted",
+          zone: "Upper La Noscea",
+          x: "10",
+          y: "20",
+          title: "Accepted Overlook",
+          images: file,
+        }),
+      ),
+    );
+
+    expect(response.status).toBe(201);
+    expect(harness.spotInserts[0]).toMatchObject({
+      state: "submitted",
+      title: "Accepted Overlook",
+    });
+    expect(harness.spotUpdates[0]).toMatchObject({
+      accepted_by: "user-1",
+      state: "accepted",
+    });
+    expect(await responseJson(response)).toMatchObject({
+      spot: {
+        state: "accepted",
+      },
+    });
+  });
+
+  it("rejects immediate acceptance by non-reviewers", async () => {
+    const harness = makeHarness({ role: "submitter" });
+    const file = new File(["jpg bytes"], "spot.jpg", { type: "image/jpeg" });
+
+    const response = await POST(
+      makeRequest(
+        makeFormData({
+          state: "accepted",
+          zone: "Upper La Noscea",
+          x: "10",
+          y: "20",
+          title: "Accepted Overlook",
+          images: file,
+        }),
+      ),
+    );
+
+    expect(response.status).toBe(403);
+    expect(await responseJson(response)).toEqual({ error: "Only reviewers can immediately accept spots." });
+    expect(harness.spotInserts).toEqual([]);
   });
 
   it("enforces configurable draft limits before inserting", async () => {

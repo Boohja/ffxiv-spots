@@ -96,31 +96,31 @@ export function UserMenu({ avatarUrl, displayName, profileHref }: UserMenuProps)
   }, [isOpen]);
 
   return (
-    <div ref={menuRef} className="relative flex h-9 items-center">
+    <div ref={menuRef} className="relative flex h-9 items-center md:h-16">
       <button
         type="button"
         aria-label="Open user menu"
         aria-expanded={isOpen}
         aria-controls={menuId}
-        className="relative z-50 inline-flex h-9 w-9 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-border-default bg-surface-elevated text-brand-spark transition hover:border-border-active/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-active/70 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
+        className="relative z-50 inline-flex h-9 w-9 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-border-default bg-surface-elevated text-brand-spark transition hover:border-border-active/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-active/70 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page md:h-16 md:w-16"
         onClick={() => setIsOpen((current) => !current)}
       >
         {avatarUrl ? (
-          <Image src={avatarUrl} alt="" fill sizes="36px" className="object-cover" />
+          <Image src={avatarUrl} alt="" fill sizes="(min-width: 768px) 64px, 36px" className="object-cover" />
         ) : (
           <FallbackAvatar />
         )}
       </button>
       {unreadCount > 0 ? (
         <span
-          className="absolute -right-1.5 -top-1.5 z-50 h-5 w-5 rounded-full border-2 border-surface-base bg-brand-spark"
+          className="absolute -right-1.5 -top-1.5 z-50 h-5 w-5 rounded-full border-2 border-surface-base bg-brand-spark md:h-6 md:w-6"
           aria-label={`${unreadCount} unread notifications`}
         />
       ) : null}
       {isOpen ? (
         <div
           id={menuId}
-          className="absolute right-0 top-11 z-50 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-border-default bg-surface-elevated shadow-[0_22px_48px_-24px_rgba(0,0,0,0.9)]"
+          className="absolute right-0 top-11 z-50 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-border-default bg-surface-elevated shadow-[0_22px_48px_-24px_rgba(0,0,0,0.9)] md:top-[4.5rem]"
           role="menu"
         >
           <div className="border-b border-border-subtle px-3 py-2">

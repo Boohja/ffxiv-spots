@@ -32,7 +32,7 @@ type SubmitFeedback =
     }
   | undefined;
 
-type SubmitMode = "draft" | "submitted";
+type SubmitMode = "draft" | "submitted" | "accepted";
 type EditMode = "create" | "ownerDraft" | "ownerSubmitted" | "review";
 type EditAction = "save_draft" | "submit" | "revoke" | "save_review" | "accept" | "delete";
 
@@ -66,11 +66,12 @@ export type EditableSpotFormValue = {
 };
 
 type SubmitSpotFormProps = Readonly<{
+  canAcceptOnCreate?: boolean;
   mode?: EditMode;
   spot?: EditableSpotFormValue;
 }>;
 
-export function SubmitSpotForm({ mode = "create", spot }: SubmitSpotFormProps) {
+export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spot }: SubmitSpotFormProps) {
   const router = useRouter();
   const isCreateMode = mode === "create";
   const isEditable = mode !== "ownerSubmitted";
@@ -201,7 +202,7 @@ export function SubmitSpotForm({ mode = "create", spot }: SubmitSpotFormProps) {
     const validationError = validateSubmission(action, title);
 
     if (isCreateMode) {
-      formData.set("state", action === "save_draft" || action === "draft" ? "draft" : "submitted");
+      formData.set("state", action === "accept" ? "accepted" : action === "save_draft" || action === "draft" ? "draft" : "submitted");
     } else {
       formData.set("action", normalizeEditAction(action));
     }
@@ -267,7 +268,12 @@ export function SubmitSpotForm({ mode = "create", spot }: SubmitSpotFormProps) {
         return;
       }
 
-      setCompletion({ state: formData.get("state") === "draft" ? "draft" : "submitted", slug: savedSlug });
+      const savedState = formData.get("state");
+
+      setCompletion({
+        state: savedState === "accepted" ? "accepted" : savedState === "draft" ? "draft" : "submitted",
+        slug: savedSlug,
+      });
       window.setTimeout(() => {
         router.push(`/spots/${savedSlug}`);
       }, 5000);
@@ -622,20 +628,22 @@ export function SubmitSpotForm({ mode = "create", spot }: SubmitSpotFormProps) {
           <div className="mt-5 grid gap-2">
             {isReviewMode ? (
               <>
-                <Button
-                  type="button"
-                  size="lg"
-                  disabled={isSubmitting}
-                  onClick={(event) => {
-                    const form = event.currentTarget.form;
+                {spot?.state !== "accepted" ? (
+                  <Button
+                    type="button"
+                    size="lg"
+                    disabled={isSubmitting}
+                    onClick={(event) => {
+                      const form = event.currentTarget.form;
 
-                    if (form) {
-                      void saveSpot("accept", form);
-                    }
-                  }}
-                >
-                  {isSubmitting ? "Processing..." : "Save and accept"}
-                </Button>
+                      if (form) {
+                        void saveSpot("accept", form);
+                      }
+                    }}
+                  >
+                    {isSubmitting ? "Processing..." : "Save and accept"}
+                  </Button>
+                ) : null}
                 <Button type="submit" variant="secondary" disabled={isSubmitting}>
                   {isSubmitting ? "Processing..." : "Save and return"}
                 </Button>
@@ -656,9 +664,31 @@ export function SubmitSpotForm({ mode = "create", spot }: SubmitSpotFormProps) {
               </>
             ) : (
               <>
-                <Button type="submit" size="lg" disabled={isSubmitting}>
-                  {isSubmitting ? "Processing..." : "Submit spot"}
-                </Button>
+                {isCreateMode && canAcceptOnCreate ? (
+                  <Button
+                    type="button"
+                    size="lg"
+                    disabled={isSubmitting}
+                    onClick={(event) => {
+                      const form = event.currentTarget.form;
+
+                      if (form) {
+                        void saveSpot("accept", form);
+                      }
+                    }}
+                  >
+                    {isSubmitting ? "Processing..." : "Save and accept"}
+                  </Button>
+                ) : (
+                  <Button type="submit" size="lg" disabled={isSubmitting}>
+                    {isSubmitting ? "Processing..." : "Submit spot"}
+                  </Button>
+                )}
+                {isCreateMode && canAcceptOnCreate ? (
+                  <Button type="submit" variant="secondary" disabled={isSubmitting}>
+                    {isSubmitting ? "Processing..." : "Submit spot"}
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   variant="secondary"
@@ -764,6 +794,10 @@ function normalizeEditAction(action: SubmitMode | EditAction): EditAction {
     return "submit";
   }
 
+  if (action === "accepted") {
+    return "accept";
+  }
+
   return action;
 }
 
@@ -805,6 +839,7 @@ function formatDateTime(value: string) {
 
 function SubmissionCompleteCard({ state, slug }: Readonly<{ state: SubmitMode; slug: string }>) {
   const isDraft = state === "draft";
+  const isAccepted = state === "accepted";
   const href = `/spots/${slug}`;
 
   return (
@@ -814,15 +849,21 @@ function SubmissionCompleteCard({ state, slug }: Readonly<{ state: SubmitMode; s
       }`}
     >
       <p className={`text-sm font-semibold uppercase ${isDraft ? "text-info" : "text-success"}`}>
-        {isDraft ? "Draft saved" : "Spot submitted"}
+        {isDraft ? "Draft saved" : isAccepted ? "Spot accepted" : "Spot submitted"}
       </p>
       <h2 className="mt-2 text-3xl font-semibold text-text-primary">
-        {isDraft ? "Your spot draft was saved." : "Your spot is waiting for review."}
+        {isDraft
+          ? "Your spot draft was saved."
+          : isAccepted
+            ? "Your spot is live."
+            : "Your spot is waiting for review."}
       </h2>
       <p className="mt-3 text-sm leading-6 text-text-secondary">
         {isDraft
           ? "You can come back and edit it whenever the draft editor is available."
-          : "A privileged member can review and accept it before it appears publicly."}
+          : isAccepted
+            ? "It is now visible to everyone browsing XIVSpots."
+            : "A privileged member can review and accept it before it appears publicly."}
       </p>
       <p className="mt-5 rounded-lg border border-border-subtle bg-surface-base px-3 py-2 text-sm text-text-muted">
         Redirecting to the spot page in 5 seconds.

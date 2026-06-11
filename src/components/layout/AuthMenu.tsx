@@ -31,7 +31,7 @@ export async function AuthMenu() {
     return (
       <a
         href="/auth/login"
-        className="inline-flex h-9 items-center justify-center rounded-lg border border-border-default bg-surface-elevated px-3 text-xs font-semibold text-text-primary transition hover:border-border-active/60 hover:bg-surface-overlay"
+        className="inline-flex h-9 items-center justify-center rounded-lg border border-border-default bg-surface-elevated px-3 text-xs font-semibold text-text-primary transition hover:border-border-active/60 hover:bg-surface-overlay md:h-12 md:px-4 md:text-sm"
       >
         Sign in with Discord
       </a>

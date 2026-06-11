@@ -212,9 +212,11 @@ function SpotDetailLayout({
     <div className="space-y-6">
       <header>
         <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">{breadcrumb}</p>
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <SpotStateBadge label={statusLabel} state={statusState} />
-          <h1 className="text-3xl font-semibold text-text-primary">{title}</h1>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <h1 className="min-w-0 flex-1 text-3xl font-semibold text-text-primary">{title}</h1>
+          <div className="ml-auto">
+            <SpotStateBadge label={statusLabel} state={statusState} />
+          </div>
         </div>
       </header>
 
