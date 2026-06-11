@@ -23,6 +23,7 @@ type DatabaseSpotForEdit = {
   description: string | null;
   tags: string[] | null;
   access_notes: string | null;
+  updated_at: string;
   spot_images: {
     id: string;
     url: string;
@@ -60,7 +61,7 @@ export default async function SpotEditPage({ params }: SpotEditPageProps) {
     supabase
       .from("spots")
       .select(
-        "id, slug, submitted_by, state, zone, x, y, z, title, description, tags, access_notes, spot_images(id, url, alt, sort_order)",
+        "id, slug, submitted_by, state, zone, x, y, z, title, description, tags, access_notes, updated_at, spot_images(id, url, alt, sort_order)",
       )
       .eq("slug", slug)
       .maybeSingle<DatabaseSpotForEdit>(),
@@ -140,6 +141,7 @@ function toEditableSpot(spot: DatabaseSpotForEdit): EditableSpotFormValue {
     description: spot.description,
     tags: spot.tags,
     access_notes: spot.access_notes,
+    updated_at: spot.updated_at,
     images: [...spot.spot_images]
       .sort((a, b) => a.sort_order - b.sort_order)
       .map((image) => ({

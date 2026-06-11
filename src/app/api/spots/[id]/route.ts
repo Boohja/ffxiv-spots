@@ -105,7 +105,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
       await createNotification({
         recipient: spot.submitted_by,
-        title: `Your submission ${spot.title} was deleted`,
+        title: `Your submission "${spot.title}" was deleted`,
         message: buildDeletionMessage(deletionReason),
       });
       await deleteImagesFromStorage(spot.spot_images);
@@ -235,7 +235,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (action === "accept" && spot.state !== "accepted") {
       await createNotification({
         recipient: spot.submitted_by,
-        title: `Your submission ${input.title ?? spot.title} was accepted`,
+        title: `Your submission "${input.title ?? spot.title}" was accepted`,
         message: "Thank you for sharing this spot with the community. It is now visible to everyone browsing XIVSpots.",
         url: `/spots/${spot.slug}`,
       });
@@ -353,7 +353,7 @@ function buildDeletionMessage(reason: string | undefined) {
     return baseMessage;
   }
 
-  return `${baseMessage}\n\nHere is the reviewer's comment: ${reason}`;
+  return `${baseMessage}\n\nReviewer's comment:\n${reason}`;
 }
 
 async function deleteImagesFromStorage(images: ExistingImage[]) {

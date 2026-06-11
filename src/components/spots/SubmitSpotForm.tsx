@@ -61,6 +61,7 @@ export type EditableSpotFormValue = {
   description: string | null;
   tags: string[] | null;
   access_notes: string | null;
+  updated_at?: string | null;
   images: ExistingSpotImage[];
 };
 
@@ -91,8 +92,11 @@ export function SubmitSpotForm({ mode = "create", spot }: SubmitSpotFormProps) {
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [completion, setCompletion] = useState<CompletionState>();
   const [imageInputKey, setImageInputKey] = useState(0);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletionReason, setDeletionReason] = useState("");
   const imageInputRef = useRef<HTMLInputElement>(null);
   const selectedImagesRef = useRef<SelectedImage[]>([]);
+  const pendingDeleteFormRef = useRef<HTMLFormElement | null>(null);
 
   const filteredZones = useMemo(() => {
     const query = zoneQuery.trim().toLowerCase();
@@ -176,24 +180,19 @@ export function SubmitSpotForm({ mode = "create", spot }: SubmitSpotFormProps) {
     await saveSpot(isReviewMode ? "save_review" : "submit", event.currentTarget);
   }
 
-  async function saveSpot(action: SubmitMode | EditAction, form: HTMLFormElement) {
+  async function saveSpot(
+    action: SubmitMode | EditAction,
+    form: HTMLFormElement,
+    options: { deletionReason?: string; skipDeleteDialog?: boolean } = {},
+  ) {
     if (!isEditable && action !== "revoke") {
       return;
     }
 
-    if (
-      action === "delete" &&
-      !window.confirm("Delete this spot and all screenshots? This action cannot be undone.")
-    ) {
-      return;
-    }
-
-    const deletionReason =
-      action === "delete"
-        ? window.prompt("Add the reviewer comment that will be sent to the submitter.")
-        : null;
-
-    if (action === "delete" && deletionReason === null) {
+    if (action === "delete" && !options.skipDeleteDialog) {
+      pendingDeleteFormRef.current = form;
+      setDeletionReason("");
+      setIsDeleteDialogOpen(true);
       return;
     }
 
@@ -210,7 +209,7 @@ export function SubmitSpotForm({ mode = "create", spot }: SubmitSpotFormProps) {
     formData.set("title", title);
 
     if (action === "delete") {
-      formData.set("deletionReason", deletionReason?.trim() ?? "");
+      formData.set("deletionReason", options.deletionReason?.trim() ?? "");
     }
 
     formData.delete("images");
@@ -356,10 +355,13 @@ export function SubmitSpotForm({ mode = "create", spot }: SubmitSpotFormProps) {
   }
 
   const totalImages = existingImages.length + selectedImages.length;
+  const statusLabel = getStatusLabel(spot?.state ?? "draft");
+  const updatedLabel = spot?.updated_at ? formatDateTime(spot.updated_at) : "Not saved yet";
 
   return (
-    <form className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]" onSubmit={handleSubmit}>
-      <div className="space-y-6">
+    <>
+      <form className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]" onSubmit={handleSubmit}>
+        <div className="space-y-6">
         <section className="glass-panel rounded-lg p-5">
           <SectionHeading eyebrow="Location" title="Where is the spot?" />
           <div className="mt-5 grid gap-4">
@@ -477,6 +479,10 @@ export function SubmitSpotForm({ mode = "create", spot }: SubmitSpotFormProps) {
                 ? "Remove one screenshot to choose a different image."
                 : "JPG, PNG, or WebP screenshot. You can add a second angle when it helps."}
             </span>
+            <ul className="mt-4 max-w-md space-y-1 text-left text-xs leading-5 text-text-muted">
+              <li>Use unedited game screenshots without shaders, filters, or post-processing.</li>
+              <li>Keep the focus on the landscape; avoid characters and creatures when possible.</li>
+            </ul>
             <Button
               type="button"
               variant="secondary"
@@ -596,12 +602,9 @@ export function SubmitSpotForm({ mode = "create", spot }: SubmitSpotFormProps) {
         <section className="glass-panel rounded-lg p-5">
           <SectionHeading eyebrow="Review" title="Submission status" />
           <dl className="mt-5 space-y-3">
-            <SummaryRow label="Zone" value={zoneQuery} />
-            <SummaryRow label="Region" value={metadata?.region ?? "Unknown"} />
-            <SummaryRow label="Expansion" value={metadata?.expansion ?? "Unknown"} />
-            <SummaryRow label="Landmark" value={visibleLandmark?.name ?? "None nearby"} />
-            <SummaryRow label="Title hint" value={suggestedTitle} />
+            <SummaryRow label="Status" value={statusLabel} />
             <SummaryRow label="Images" value={totalImages ? String(totalImages) : "None"} />
+            <SummaryRow label="Updated" value={updatedLabel} />
           </dl>
           {submitFeedback && hasSubmitted ? (
             <p
@@ -674,8 +677,63 @@ export function SubmitSpotForm({ mode = "create", spot }: SubmitSpotFormProps) {
             )}
           </div>
         </section>
-      </aside>
-    </form>
+        </aside>
+      </form>
+
+      {isDeleteDialogOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/65 px-4 py-8">
+          <div className="w-full max-w-lg rounded-lg border border-danger/50 bg-surface-elevated p-5 shadow-2xl">
+            <p className="text-sm font-semibold uppercase text-danger">Delete submission</p>
+            <h2 className="mt-1 text-2xl font-semibold text-text-primary">Remove this spot?</h2>
+            <p className="mt-3 text-sm leading-6 text-text-secondary">
+              This permanently deletes the spot and its screenshots. The submitter will receive your comment.
+            </p>
+            <Field label="Reviewer comment" htmlFor="spot-delete-reason" className="mt-5">
+              <Textarea
+                id="spot-delete-reason"
+                rows={4}
+                value={deletionReason}
+                onChange={(event) => setDeletionReason(event.target.value)}
+                placeholder="Briefly explain why this submission was removed."
+              />
+            </Field>
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={isSubmitting}
+                onClick={() => {
+                  setIsDeleteDialogOpen(false);
+                  pendingDeleteFormRef.current = null;
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                disabled={isSubmitting}
+                onClick={() => {
+                  const form = pendingDeleteFormRef.current;
+
+                  if (!form) {
+                    return;
+                  }
+
+                  setIsDeleteDialogOpen(false);
+                  void saveSpot("delete", form, {
+                    deletionReason,
+                    skipDeleteDialog: true,
+                  });
+                }}
+              >
+                {isSubmitting ? "Deleting..." : "Delete"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -725,6 +783,24 @@ function getPendingMessage(action: SubmitMode | EditAction) {
     default:
       return "Submitting spot...";
   }
+}
+
+function getStatusLabel(state: EditableSpotFormValue["state"]) {
+  switch (state) {
+    case "accepted":
+      return "Accepted";
+    case "submitted":
+      return "Submitted";
+    default:
+      return "Draft";
+  }
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
 }
 
 function SubmissionCompleteCard({ state, slug }: Readonly<{ state: SubmitMode; slug: string }>) {

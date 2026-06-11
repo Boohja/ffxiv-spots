@@ -1,27 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import type { SpotEntry, SpotEntryState } from "@/lib/spots/entry-list";
+import { SpotStateBadge } from "@/components/spots/SpotStateBadge";
+import type { SpotEntry } from "@/lib/spots/entry-list";
 
 type SpotEntryListProps = Readonly<{
   entries: SpotEntry[];
   emptyMessage: string;
   showSubmitter?: boolean;
 }>;
-
-const stateLabels: Record<SpotEntryState, string> = {
-  draft: "Draft",
-  submitted: "Submitted",
-  accepted: "Accepted",
-  duplicate: "Duplicate",
-};
-
-const stateClasses: Record<SpotEntryState, string> = {
-  draft: "border-slate-400/35 bg-slate-400/10 text-slate-200",
-  submitted: "border-amber-400/45 bg-amber-400/10 text-amber-200",
-  accepted: "border-emerald-400/45 bg-emerald-400/10 text-emerald-200",
-  duplicate: "border-cyan-400/45 bg-cyan-400/10 text-cyan-200",
-};
 
 export function SpotEntryList({ entries, emptyMessage, showSubmitter = false }: SpotEntryListProps) {
   if (entries.length === 0) {
@@ -90,7 +77,7 @@ function SpotEntryListItem({
                     </h2>
                     <p className="mt-1 truncate text-sm text-text-secondary">{entry.zone}</p>
                   </div>
-                  <StateChip state={entry.state} />
+                  <SpotStateBadge state={entry.state} />
                 </div>
 
                 <dl className="grid grid-cols-2 gap-2 text-xs">
@@ -103,16 +90,6 @@ function SpotEntryListItem({
             </div>
           </article>
         </li>
-  );
-}
-
-function StateChip({ state }: Readonly<{ state: SpotEntryState }>) {
-  return (
-    <span
-      className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${stateClasses[state]}`}
-    >
-      {stateLabels[state]}
-    </span>
   );
 }
 

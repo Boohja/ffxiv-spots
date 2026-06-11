@@ -30,8 +30,8 @@ export function KoFiButton() {
       {
         type: "floating-chat",
         "floating-chat.donateButton.text": "Support me",
-        "floating-chat.donateButton.background-color": "#00b9fe",
-        "floating-chat.donateButton.text-color": "#fff",
+        "floating-chat.donateButton.background-color": "#F2C46D",
+        "floating-chat.donateButton.text-color": "#020617",
       },
       koFiContainerId,
     );
