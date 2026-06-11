@@ -11,7 +11,7 @@ These notes capture working context that is easy to rediscover but annoying to r
 
 ## Core Data Model
 
-- Public curated seed data still lives in `src/lib/spots/data.ts`.
+- Public spot listings are backed by accepted database rows.
 - Database-backed user submissions live in Supabase tables from `supabase/migrations/20260609130000_create_spots.sql`.
 - `spots.state` is `draft`, `submitted`, `accepted`, or `duplicate`.
 - Spot images are in `spot_images` and are ordered by `sort_order`.
@@ -20,8 +20,8 @@ These notes capture working context that is easy to rediscover but annoying to r
 
 ## Current Spot Routes
 
-- `/spots`: curated browse page using seed data and filters.
-- `/spots/[slug]`: first checks seed data, then falls back to a database-backed spot placeholder view.
+- `/spots`: browse page using accepted database rows and filters.
+- `/spots/[slug]`: database-backed spot detail view.
 - `/spots/submit`: signed-in form that saves drafts or submitted spots through `POST /api/spots`.
 - `/spots/mine`: signed-in user's compact list of their own database-backed entries, all states.
 - `/moderation/spots`: moderator/admin review queue for `submitted` entries, oldest first.

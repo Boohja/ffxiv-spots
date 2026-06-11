@@ -9,6 +9,8 @@ export type Coordinates = {
 export type SpotImage = {
   src: string;
   alt: string;
+  width?: number;
+  height?: number;
   caption?: string;
   credit?: string;
 };
@@ -28,7 +30,6 @@ export type PhotoSpot = {
   bestWeather?: string[];
   accessibilityNotes?: string[];
   images: SpotImage[];
-  featured?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -56,7 +57,7 @@ export type DuplicateCandidate = {
   reasons: string[];
 };
 
-export type SpotSort = "newest" | "title" | "zone" | "featured";
+export type SpotSort = "newest" | "title" | "zone";
 
 export type SpotFilters = {
   query?: string;

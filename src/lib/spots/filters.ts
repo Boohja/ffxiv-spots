@@ -44,10 +44,6 @@ export function filterSpots(spots: PhotoSpot[], filters: SpotFilters) {
 
 function sortSpots(spots: PhotoSpot[], sort: SpotSort) {
   return [...spots].sort((a, b) => {
-    if (sort === "featured") {
-      return Number(b.featured ?? false) - Number(a.featured ?? false) || newestFirst(a, b);
-    }
-
     if (sort === "title") {
       return a.title.localeCompare(b.title);
     }

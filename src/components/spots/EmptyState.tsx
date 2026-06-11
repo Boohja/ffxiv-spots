@@ -6,7 +6,7 @@ export function EmptyState() {
       <p className="text-sm font-semibold uppercase text-brand-spark">No matching spots</p>
       <h2 className="mt-2 text-2xl font-semibold text-text-primary">Try a broader search</h2>
       <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-text-secondary">
-        Remove a filter, search by a region name, or browse curated picks while more submissions are prepared.
+        Remove a filter, search by a region name, or check back while more accepted submissions are prepared.
       </p>
       <Link
         href="/spots"

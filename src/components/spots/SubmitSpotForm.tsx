@@ -80,7 +80,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
     () => [...zoneMetadata].sort((a, b) => a.zone.localeCompare(b.zone)),
     [],
   );
-  const [zoneQuery, setZoneQuery] = useState(spot?.zone ?? "Upper La Noscea");
+  const [zoneQuery, setZoneQuery] = useState(spot?.zone ?? "");
   const [xCoordinate, setXCoordinate] = useState(spot ? String(spot.x) : "");
   const [yCoordinate, setYCoordinate] = useState(spot ? String(spot.y) : "");
   const [isZoneListOpen, setIsZoneListOpen] = useState(false);
@@ -390,7 +390,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
                   id="spot-x"
                   name="x"
                   inputMode="decimal"
-                  placeholder="30.4"
+                  placeholder=""
                   value={xCoordinate}
                   onChange={(event) => setXCoordinate(normalizeCoordinateInput(event.target.value))}
                 />
@@ -400,7 +400,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
                   id="spot-y"
                   name="y"
                   inputMode="decimal"
-                  placeholder="22.8"
+                  placeholder=""
                   value={yCoordinate}
                   onChange={(event) => setYCoordinate(normalizeCoordinateInput(event.target.value))}
                 />
@@ -410,7 +410,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
                   id="spot-z"
                   name="z"
                   inputMode="decimal"
-                  placeholder="1.4"
+                  placeholder=""
                   defaultValue={spot?.z ?? ""}
                 />
               </Field>

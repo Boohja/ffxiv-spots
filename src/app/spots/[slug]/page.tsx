@@ -6,7 +6,7 @@ import { ImageGallery } from "@/components/spots/ImageGallery";
 import { SpotGrid } from "@/components/spots/SpotGrid";
 import { SpotStateBadge, type SpotStateBadgeState } from "@/components/spots/SpotStateBadge";
 import { TagPill } from "@/components/spots/TagPill";
-import { getRelatedSpots, getSpotBySlug, photoSpots } from "@/lib/spots/data";
+import { getAcceptedPhotoSpots } from "@/lib/spots/database";
 import type { SpotImage, UserRole } from "@/lib/spots/types";
 import { createClient } from "@/lib/supabase/server";
 import { getZoneMetadata } from "@/lib/spots/zones";
@@ -39,74 +39,43 @@ type DatabaseSpot = {
 };
 
 export function generateStaticParams() {
-  return photoSpots.map((spot) => ({ slug: spot.slug }));
+  return [];
 }
 
 export async function generateMetadata({ params }: SpotDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const spot = getSpotBySlug(slug);
-
-  if (!spot) {
-    const databaseSpot = await getDatabaseSpotBySlug(slug);
-
-    return {
-      title: databaseSpot ? `${databaseSpot.title} | XIVSpots` : "Spot not found | XIVSpots",
-      description: databaseSpot?.description ?? undefined,
-    };
-  }
+  const databaseSpot = await getDatabaseSpotBySlug(slug);
 
   return {
-    title: `${spot.title} | XIVSpots`,
-    description: spot.description,
+    title: databaseSpot ? `${databaseSpot.title} | XIVSpots` : "Spot not found | XIVSpots",
+    description: databaseSpot?.description ?? undefined,
   };
 }
 
 export default async function SpotDetailPage({ params }: SpotDetailPageProps) {
   const { slug } = await params;
-  const spot = getSpotBySlug(slug);
 
-  if (!spot) {
-    const databaseSpot = await getDatabaseSpotBySlug(slug);
-
-    if (!databaseSpot) {
-      notFound();
-    }
-
-    const canEdit = await canViewerEditSpots();
-
-    return <DatabaseSpotPlaceholder canEdit={canEdit} spot={databaseSpot} />;
+  const databaseSpot = await getDatabaseSpotBySlug(slug);
+  if (!databaseSpot) {
+    notFound();
   }
 
-  const related = getRelatedSpots(spot);
+  const canEdit = await canViewerEditSpots();
+  const related = databaseSpot.state === "accepted" ? await getRelatedAcceptedSpots(databaseSpot.id) : [];
 
   return (
     <main className="mx-auto w-full max-w-6xl space-y-10 px-4 py-10">
-      <SpotDetailLayout
-        accessNotes={spot.accessibilityNotes}
-        breadcrumb={`${spot.expansion} / ${spot.region} / ${spot.zone}`}
-        description={spot.description}
-        editHref={undefined}
-        images={spot.images}
-        locationRows={[
-          ["Zone", spot.area ? `${spot.zone} / ${spot.area}` : spot.zone],
-          ["Coordinates", formatCoordinates(spot.coordinates)],
-        ]}
-        secondaryDetails={[
-          ["Best time", spot.bestTimeOfDay?.join(", ")],
-          ["Best weather", spot.bestWeather?.join(", ")],
-        ]}
-        statusState="accepted"
-        tags={spot.tags}
-        title={spot.title}
-      />
+      <DatabaseSpotDetail canEdit={canEdit} spot={databaseSpot} />
 
-      <section className="space-y-4">
-        <div>
-          <p className="text-sm font-semibold uppercase text-brand-spark">Related</p>
-          <h2 className="mt-1 text-3xl font-semibold text-text-primary">Nearby moods and zones</h2>
-        </div>
-        <SpotGrid spots={related} />
-      </section>
+      {related.length > 0 ? (
+        <section className="space-y-4">
+          <div>
+            <p className="text-sm font-semibold uppercase text-brand-spark">Related</p>
+            <h2 className="mt-1 text-3xl font-semibold text-text-primary">Nearby moods and zones</h2>
+          </div>
+          <SpotGrid spots={related} />
+        </section>
+      ) : null}
     </main>
   );
 }
@@ -146,7 +115,14 @@ async function canViewerEditSpots() {
   return data?.role === "moderator" || data?.role === "admin";
 }
 
-function DatabaseSpotPlaceholder({
+async function getRelatedAcceptedSpots(currentSpotId: string) {
+  const supabase = await createClient();
+  const acceptedSpots = await getAcceptedPhotoSpots(supabase);
+
+  return acceptedSpots.filter((spot) => spot.id !== currentSpotId).slice(0, 3);
+}
+
+function DatabaseSpotDetail({
   canEdit,
   spot,
 }: Readonly<{
@@ -158,7 +134,7 @@ function DatabaseSpotPlaceholder({
   const accessNotes = spot.access_notes ? [spot.access_notes] : undefined;
 
   return (
-    <main className="mx-auto w-full max-w-6xl space-y-10 px-4 py-10">
+    <div className="space-y-6">
       <SpotDetailLayout
         accessNotes={accessNotes}
         breadcrumb={`${zone.expansion} / ${zone.region} / ${spot.zone}`}
@@ -177,7 +153,7 @@ function DatabaseSpotPlaceholder({
         tags={spot.tags ?? []}
         title={spot.title}
       />
-    </main>
+    </div>
   );
 }
 

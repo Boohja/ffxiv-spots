@@ -11,7 +11,7 @@ type SpotsPageProps = Readonly<{
 
 export const metadata = {
   title: "Browse Spots | XIVSpots",
-  description: "Search and filter curated Final Fantasy XIV photo spot ideas.",
+  description: "Search and filter accepted Final Fantasy XIV photo spot ideas.",
 };
 
 export default async function SpotsPage({ searchParams }: SpotsPageProps) {
@@ -37,7 +37,7 @@ export default async function SpotsPage({ searchParams }: SpotsPageProps) {
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="grid items-start gap-6 lg:grid-cols-[280px_1fr]">
         <FilterPanel facets={facets} filters={filters} />
         <SpotGrid spots={spots} />
       </div>
@@ -60,7 +60,5 @@ function single(value: string | string[] | undefined) {
 }
 
 function parseSort(value?: string): SpotSort | undefined {
-  return value === "title" || value === "zone" || value === "featured" || value === "newest"
-    ? value
-    : undefined;
+  return value === "title" || value === "zone" || value === "newest" ? value : undefined;
 }

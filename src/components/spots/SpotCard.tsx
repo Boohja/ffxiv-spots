@@ -11,6 +11,7 @@ type SpotCardProps = Readonly<{
 
 export function SpotCard({ spot, priority = false }: SpotCardProps) {
   const image = spot.images[0];
+  const description = spot.description.trim();
 
   return (
     <article className="glass-panel group overflow-hidden rounded-lg">
@@ -24,11 +25,6 @@ export function SpotCard({ spot, priority = false }: SpotCardProps) {
             priority={priority}
             className="object-cover transition duration-500 group-hover:scale-105"
           />
-          {spot.featured ? (
-            <span className="absolute left-3 top-3 rounded-full border border-amber-300/40 bg-surface-base/85 px-3 py-1 text-xs font-semibold text-amber-200 backdrop-blur">
-              Curated
-            </span>
-          ) : null}
         </div>
         <div className="space-y-3 p-4">
           <div>
@@ -36,7 +32,9 @@ export function SpotCard({ spot, priority = false }: SpotCardProps) {
             <h3 className="mt-1 text-xl font-semibold text-text-primary">{spot.title}</h3>
             <p className="mt-1 text-sm text-text-secondary">{spot.zone}</p>
           </div>
-          <p className="line-clamp-3 text-sm leading-6 text-text-secondary">{spot.description}</p>
+          <p className="min-h-[4.5rem] text-sm leading-6 text-text-secondary">
+            {description ? <span className="line-clamp-3">{description}</span> : null}
+          </p>
           <div className="flex flex-wrap gap-2">
             {spot.tags.slice(0, 4).map((tag) => (
               <TagPill key={tag} label={tag} />

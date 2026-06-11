@@ -22,12 +22,14 @@ export type DatabaseSpotRow = {
   spot_images: {
     url: string;
     alt: string | null;
+    width: number;
+    height: number;
     sort_order: number;
   }[];
 };
 
 const acceptedSpotSelect =
-  "id,slug,state,zone,x,y,z,title,description,tags,access_notes,created_at,updated_at,accepted_at,spot_images(url,alt,sort_order)";
+  "id,slug,state,zone,x,y,z,title,description,tags,access_notes,created_at,updated_at,accepted_at,spot_images(url,alt,width,height,sort_order)";
 
 export async function getAcceptedPhotoSpots(supabase: SupabaseClient) {
   const { data, error } = await supabase
@@ -64,7 +66,6 @@ export function toPhotoSpot(spot: DatabaseSpotRow): PhotoSpot {
     tags: spot.tags ?? [],
     accessibilityNotes: spot.access_notes ? [spot.access_notes] : undefined,
     images: toSpotImages(spot),
-    featured: Boolean(spot.accepted_at),
     createdAt: spot.created_at,
     updatedAt: spot.updated_at,
   };
@@ -77,6 +78,8 @@ function toSpotImages(spot: DatabaseSpotRow): SpotImage[] {
     .map((image) => ({
       src: image.url,
       alt: image.alt ?? spot.title,
+      width: image.width,
+      height: image.height,
     }));
 
   return images.length > 0

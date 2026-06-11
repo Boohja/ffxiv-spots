@@ -4,15 +4,23 @@ import Link from "next/link";
 import { FeaturedSection } from "@/components/spots/FeaturedSection";
 import { SpotGrid } from "@/components/spots/SpotGrid";
 import { TagPill } from "@/components/spots/TagPill";
-import { getFeaturedSpots, photoSpots } from "@/lib/spots/data";
+import { getAcceptedPhotoSpots } from "@/lib/spots/database";
 import { getSpotFacets } from "@/lib/spots/filters";
+import { createClient } from "@/lib/supabase/server";
 
-export default function Home() {
-  const featured = getFeaturedSpots();
-  const recent = [...photoSpots]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 3);
-  const facets = getSpotFacets(photoSpots);
+const placeholderHero = {
+  src: "/spots/placeholder.webp",
+  alt: "",
+};
+
+export default async function Home() {
+  const supabase = await createClient();
+  const acceptedSpots = await getAcceptedPhotoSpots(supabase);
+  const heroSpot = pickRandomSpot(acceptedSpots);
+  const mostLiked = pickRandomSpots(acceptedSpots, 3);
+  const recent = acceptedSpots.slice(0, 3);
+  const facets = getSpotFacets(acceptedSpots);
+  const heroImage = heroSpot?.images[0] ?? placeholderHero;
 
   return (
     <main>
@@ -25,7 +33,7 @@ export default function Home() {
                 Discover scenic photo spots across Eorzea and beyond.
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-text-secondary">
-                Browse curated places for screenshots, portraits, roleplay, relaxing, and quiet views worth revisiting.
+                Browse community photo spots for screenshots, portraits, roleplay, relaxing, and quiet views worth revisiting.
               </p>
             </div>
 
@@ -54,31 +62,30 @@ export default function Home() {
             </div>
           </div>
 
-          <Link
-            href={`/spots/${featured[0].slug}`}
-            className="glass-panel group overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-active"
-          >
-            <div className="relative aspect-[4/5] min-h-[420px] bg-surface-base">
-              <Image
-                src={featured[0].images[0].src}
-                alt={featured[0].images[0].alt}
-                fill
-                priority
-                sizes="(min-width: 1024px) 45vw, 100vw"
-                className="object-cover transition duration-500 group-hover:scale-105"
+          {heroSpot ? (
+            <Link
+              href={`/spots/${heroSpot.slug}`}
+              className="glass-panel group overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-active"
+            >
+              <HeroImage
+                alt={heroImage.alt}
+                height={heroImage.height}
+                src={heroImage.src}
+                subtitle={heroSpot.zone}
+                title={heroSpot.title}
+                width={heroImage.width}
               />
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-surface-page via-surface-page/75 to-transparent p-5">
-                <p className="text-xs font-semibold uppercase text-amber-200">Featured</p>
-                <h2 className="mt-1 text-3xl font-semibold text-text-primary">{featured[0].title}</h2>
-                <p className="mt-2 text-sm text-text-secondary">{featured[0].zone}</p>
-              </div>
+            </Link>
+          ) : (
+            <div className="glass-panel overflow-hidden rounded-lg">
+              <HeroImage alt={heroImage.alt} src={heroImage.src} />
             </div>
-          </Link>
+          )}
         </div>
       </section>
 
       <div className="mx-auto w-full max-w-6xl space-y-12 px-4 py-12">
-        <FeaturedSection spots={featured} />
+        <FeaturedSection spots={mostLiked} />
 
         <section className="space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -95,4 +102,51 @@ export default function Home() {
       </div>
     </main>
   );
+}
+
+function HeroImage({
+  alt,
+  height,
+  src,
+  subtitle,
+  title,
+  width,
+}: Readonly<{
+  alt: string;
+  height?: number;
+  src: string;
+  subtitle?: string;
+  title?: string;
+  width?: number;
+}>) {
+  const aspectRatio = width && height ? `${width} / ${height}` : "16 / 9";
+  const maxImageWidth = width ? `${width}px` : undefined;
+
+  return (
+    <div className="relative w-full bg-surface-base" style={{ aspectRatio, maxWidth: maxImageWidth }}>
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        priority
+        sizes="(min-width: 1024px) 520px, calc(100vw - 2rem)"
+        className="object-contain transition duration-500 group-hover:scale-105"
+      />
+      {title ? (
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-surface-page via-surface-page/75 to-transparent p-5">
+          <p className="text-xs font-semibold uppercase text-amber-200">Spotlight</p>
+          <h2 className="mt-1 text-3xl font-semibold text-text-primary">{title}</h2>
+          {subtitle ? <p className="mt-2 text-sm text-text-secondary">{subtitle}</p> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function pickRandomSpot<T>(items: T[]) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function pickRandomSpots<T>(items: T[], count: number) {
+  return [...items].sort(() => Math.random() - 0.5).slice(0, count);
 }

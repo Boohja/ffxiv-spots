@@ -12,7 +12,7 @@ export function SpotGrid({ spots }: SpotGridProps) {
   }
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid self-start gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:items-start">
       {spots.map((spot, index) => (
         <SpotCard key={spot.id} spot={spot} priority={index < 3} />
       ))}
