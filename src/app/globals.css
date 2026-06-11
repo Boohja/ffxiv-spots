@@ -115,6 +115,15 @@ h6 {
   box-shadow: 0 0 0 1px rgba(93, 235, 255, 0.28), 0 0 28px -14px rgba(93, 235, 255, 0.85);
 }
 
+.text-gradient-primary {
+  display: inline-block;
+  background-image: var(--gradient-primary);
+  background-clip: text;
+  color: transparent;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 .kofi-footer-widget .floatingchat-container-wrap,
 .kofi-footer-widget .floatingchat-container-wrap-mobi {
   position: static !important;

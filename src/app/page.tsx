@@ -24,13 +24,27 @@ export default async function Home() {
 
   return (
     <main>
-      <section className="border-b border-border-subtle/70">
-        <div className="mx-auto grid min-h-[calc(100vh-7rem)] w-full max-w-6xl gap-8 px-4 py-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+      <section className="relative overflow-hidden border-b border-border-subtle/70">
+        <div className="absolute inset-0 z-0">
+          <Image
+            aria-hidden="true"
+            src={heroImage.src}
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="scale-110 object-cover opacity-55 blur-[2px] saturate-125"
+          />
+          <div className="absolute inset-0 bg-surface-page/35" />
+          <div className="absolute inset-0 bg-gradient-to-b from-surface-page/55 via-transparent to-surface-page/85" />
+          <div className="absolute inset-0 bg-gradient-to-r from-surface-page/90 via-surface-page/25 to-transparent" />
+        </div>
+
+        <div className="relative z-10 mx-auto grid min-h-[calc(100vh-7rem)] w-full max-w-6xl gap-8 px-4 py-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <div className="space-y-7">
             <div className="space-y-4">
-              <p className="text-sm font-semibold uppercase text-brand-spark">XIVSpots</p>
               <h1 className="max-w-3xl text-5xl font-semibold leading-tight text-text-primary md:text-6xl">
-                Discover scenic photo spots across Eorzea and beyond.
+                Discover scenic photo <span className="text-gradient-primary">spots</span> across Eorzea and beyond.
               </h1>
               <p className="max-w-2xl text-lg leading-8 text-text-secondary">
                 Browse community photo spots for screenshots, portraits, roleplay, relaxing, and quiet views worth revisiting.
@@ -120,20 +134,22 @@ function HeroImage({
   width?: number;
 }>) {
   const aspectRatio = width && height ? `${width} / ${height}` : "16 / 9";
-  const maxImageWidth = width ? `${width}px` : undefined;
 
   return (
-    <div className="relative w-full bg-surface-base" style={{ aspectRatio, maxWidth: maxImageWidth }}>
+    <div
+      className="relative w-full overflow-hidden bg-surface-base shadow-[0_24px_70px_rgba(0,0,0,0.45)]"
+      style={{ aspectRatio }}
+    >
       <Image
         src={src}
         alt={alt}
         fill
         priority
         sizes="(min-width: 1024px) 520px, calc(100vw - 2rem)"
-        className="object-contain transition duration-500 group-hover:scale-105"
+        className="object-cover transition duration-500 group-hover:scale-[1.02]"
       />
       {title ? (
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-surface-page via-surface-page/75 to-transparent p-5">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/45 to-transparent p-5 pt-16">
           <p className="text-xs font-semibold uppercase text-amber-200">Spotlight</p>
           <h2 className="mt-1 text-3xl font-semibold text-text-primary">{title}</h2>
           {subtitle ? <p className="mt-2 text-sm text-text-secondary">{subtitle}</p> : null}
