@@ -2,14 +2,12 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { AuthMenu } from "@/components/layout/AuthMenu";
-import { Input } from "@/components/ui/Input";
+import { NavbarLinks } from "@/components/layout/NavbarLinks";
 import { createClient } from "@/lib/supabase/server";
 
 const publicLinks = [
   { href: "/", label: "Discover" },
-  { href: "/spots", label: "Browse" },
-  { href: "/favorites", label: "Favorites" },
-  { href: "/spots?sort=featured", label: "Curated" },
+  { href: "/spots", label: "Browse" }
 ];
 
 export async function MainNavbar() {
@@ -26,6 +24,7 @@ export async function MainNavbar() {
     : { data: null };
   const links = [
     ...publicLinks,
+    user ? { href: "/spots/submit", label: "Submit" } : null,
     user ? { href: "/spots/mine", label: "My spots" } : null,
     appProfile?.role === "moderator" || appProfile?.role === "admin"
       ? { href: "/moderation/spots", label: "Review" }
@@ -35,7 +34,7 @@ export async function MainNavbar() {
   return (
     <header className="relative z-50 border-b border-border-subtle/60 bg-surface-base">
       <nav className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-4 py-3 md:py-4">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 md:grid-cols-[minmax(16rem,1fr)_minmax(0,36rem)_max-content] md:gap-6">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 md:grid-cols-[minmax(24rem,1fr)_minmax(0,38rem)_max-content] md:gap-6">
           <Link href="/" className="flex h-12 min-w-0 shrink-0 items-center gap-2 md:h-[5.5rem] md:gap-4 md:pr-4" aria-label="xivspots home">
             <Image
               src="/brand/icon.png?v=transparent"
@@ -104,36 +103,14 @@ export async function MainNavbar() {
             </svg>
           </Link>
           <div className="hidden w-full max-w-xl justify-self-center md:flex md:flex-col md:gap-3">
-            <ul className="flex w-full items-center justify-center gap-2 overflow-x-auto pb-1">
-              {links.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="inline-flex h-9 items-center rounded-full border border-transparent px-3 text-sm text-text-secondary transition hover:border-border-default hover:bg-surface-raised hover:text-text-primary"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <NavbarLinks className="flex w-full items-center justify-center gap-2 overflow-x-auto pb-1" links={links} />
           </div>
           <div className="flex items-center justify-end gap-2">
             <AuthMenu />
           </div>
         </div>
 
-        <ul className="flex items-center gap-2 overflow-x-auto pb-1 md:hidden">
-          {links.map((link) => (
-            <li key={link.href}>
-              <Link
-                href={link.href}
-                className="inline-flex h-9 items-center rounded-full border border-transparent px-3 text-sm text-text-secondary transition hover:border-border-default hover:bg-surface-raised hover:text-text-primary"
-              >
-                {link.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <NavbarLinks className="flex items-center gap-2 overflow-x-auto pb-1 md:hidden" linkClassName="text-sm" links={links} />
       </nav>
     </header>
   );
