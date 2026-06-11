@@ -1,8 +1,9 @@
 import { FilterPanel } from "@/components/spots/FilterPanel";
 import { SpotGrid } from "@/components/spots/SpotGrid";
-import { photoSpots } from "@/lib/spots/data";
-import { filterSpots } from "@/lib/spots/filters";
+import { getAcceptedPhotoSpots } from "@/lib/spots/database";
+import { filterSpots, getSpotFacets } from "@/lib/spots/filters";
 import type { SpotFilters, SpotSort } from "@/lib/spots/types";
+import { createClient } from "@/lib/supabase/server";
 
 type SpotsPageProps = Readonly<{
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -16,7 +17,10 @@ export const metadata = {
 export default async function SpotsPage({ searchParams }: SpotsPageProps) {
   const params = await searchParams;
   const filters = parseFilters(params);
-  const spots = filterSpots(photoSpots, filters);
+  const supabase = await createClient();
+  const allSpots = await getAcceptedPhotoSpots(supabase);
+  const spots = filterSpots(allSpots, filters);
+  const facets = getSpotFacets(allSpots);
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-10">
@@ -25,16 +29,16 @@ export default async function SpotsPage({ searchParams }: SpotsPageProps) {
           <p className="text-sm font-semibold uppercase text-brand-spark">Browse</p>
           <h1 className="mt-1 text-4xl font-semibold text-text-primary">Photo spot atlas</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
-            Filter curated v1 data by region, zone, tag, time, weather, and sort order.
+            Filter accepted community photo spots by region, zone, tag, and sort order.
           </p>
         </div>
         <p className="rounded-full border border-border-default bg-surface-base px-3 py-1 text-sm text-text-secondary">
-          {spots.length} of {photoSpots.length} spots
+          {spots.length} of {allSpots.length} spots
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <FilterPanel filters={filters} />
+        <FilterPanel facets={facets} filters={filters} />
         <SpotGrid spots={spots} />
       </div>
     </main>
@@ -47,8 +51,6 @@ function parseFilters(params: Record<string, string | string[] | undefined>): Sp
     region: single(params.region),
     zone: single(params.zone),
     tag: single(params.tag),
-    time: single(params.time),
-    weather: single(params.weather),
     sort: parseSort(single(params.sort)),
   };
 }

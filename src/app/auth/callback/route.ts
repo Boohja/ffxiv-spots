@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import {
+  getDiscordAccessConfig,
+  getDiscordLoginFailureReason,
+  type DiscordAccessProfile,
+} from "@/lib/auth/discord-access";
 import { upsertAppUserProfile } from "@/lib/auth/profile";
 import { createClient } from "@/lib/supabase/server";
 
@@ -22,6 +27,15 @@ export async function GET(request: NextRequest) {
       } = await supabase.auth.getUser();
 
       if (user) {
+        const profile = await getAppUserAccessProfile(supabase, user.id);
+        const failureReason = getDiscordLoginFailureReason(profile, getDiscordAccessConfig());
+
+        if (failureReason) {
+          await supabase.auth.signOut();
+
+          return NextResponse.redirect(`${origin}/auth/error?reason=${failureReason}`);
+        }
+
         try {
           await upsertAppUserProfile(supabase, user);
         } catch (profileError) {
@@ -41,4 +55,21 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.redirect(`${origin}/auth/error`);
+}
+
+async function getAppUserAccessProfile(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+) {
+  const { data, error } = await supabase
+    .from("app_users")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle<DiscordAccessProfile>();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
 }

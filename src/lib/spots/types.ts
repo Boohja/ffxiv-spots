@@ -63,7 +63,5 @@ export type SpotFilters = {
   region?: string;
   zone?: string;
   tag?: string;
-  time?: string;
-  weather?: string;
   sort?: SpotSort;
 };

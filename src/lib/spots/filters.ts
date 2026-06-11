@@ -1,20 +1,16 @@
-import { photoSpots } from "@/lib/spots/data";
 import type { PhotoSpot, SpotFilters, SpotSort } from "@/lib/spots/types";
 
 export const sortOptions = [
   { value: "newest", label: "Newest" },
-  { value: "featured", label: "Curated" },
   { value: "title", label: "Title" },
   { value: "zone", label: "Zone" },
 ] satisfies { value: SpotSort; label: string }[];
 
-export function getSpotFacets() {
+export function getSpotFacets(spots: PhotoSpot[]) {
   return {
-    regions: unique(photoSpots.map((spot) => spot.region)),
-    zones: unique(photoSpots.map((spot) => spot.zone)),
-    tags: unique(photoSpots.flatMap((spot) => spot.tags)),
-    times: unique(photoSpots.flatMap((spot) => spot.bestTimeOfDay ?? [])),
-    weather: unique(photoSpots.flatMap((spot) => spot.bestWeather ?? [])),
+    regions: unique(spots.map((spot) => spot.region)),
+    zones: unique(spots.map((spot) => spot.zone)),
+    tags: unique(spots.flatMap((spot) => spot.tags)),
   };
 }
 
@@ -39,9 +35,7 @@ export function filterSpots(spots: PhotoSpot[], filters: SpotFilters) {
       (!query || haystack.includes(query)) &&
       (!filters.region || spot.region === filters.region) &&
       (!filters.zone || spot.zone === filters.zone) &&
-      (!filters.tag || spot.tags.includes(filters.tag)) &&
-      (!filters.time || spot.bestTimeOfDay?.includes(filters.time)) &&
-      (!filters.weather || spot.bestWeather?.includes(filters.weather))
+      (!filters.tag || spot.tags.includes(filters.tag))
     );
   });
 

@@ -113,7 +113,7 @@ export function UserMenu({ avatarUrl, displayName, profileHref }: UserMenuProps)
       </button>
       {unreadCount > 0 ? (
         <span
-          className="absolute -right-0.5 -top-0.5 z-50 h-3 w-3 rounded-full border-2 border-surface-base bg-brand-spark"
+          className="absolute -right-1.5 -top-1.5 z-50 h-5 w-5 rounded-full border-2 border-surface-base bg-brand-spark"
           aria-label={`${unreadCount} unread notifications`}
         />
       ) : null}

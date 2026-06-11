@@ -1,20 +1,23 @@
 import Link from "next/link";
 
-import { getSpotFacets, sortOptions } from "@/lib/spots/filters";
+import { sortOptions } from "@/lib/spots/filters";
 import type { SpotFilters } from "@/lib/spots/types";
 
 type FilterPanelProps = Readonly<{
+  facets: {
+    regions: string[];
+    zones: string[];
+    tags: string[];
+  };
   filters: SpotFilters;
 }>;
 
-export function FilterPanel({ filters }: FilterPanelProps) {
-  const facets = getSpotFacets();
-
+export function FilterPanel({ facets, filters }: FilterPanelProps) {
   return (
     <form action="/spots" className="glass-panel sticky top-4 space-y-4 rounded-lg p-4">
       <div>
         <h2 className="text-lg font-semibold text-text-primary">Filter spots</h2>
-        <p className="mt-1 text-sm text-text-secondary">Search by mood, place, access, or shooting conditions.</p>
+        <p className="mt-1 text-sm text-text-secondary">Search by mood, place, access, or tag.</p>
       </div>
       <label className="block text-sm font-semibold text-text-secondary">
         Search
@@ -28,8 +31,6 @@ export function FilterPanel({ filters }: FilterPanelProps) {
       <SelectFilter name="region" label="Region" value={filters.region} options={facets.regions} />
       <SelectFilter name="zone" label="Zone" value={filters.zone} options={facets.zones} />
       <SelectFilter name="tag" label="Tag" value={filters.tag} options={facets.tags} />
-      <SelectFilter name="time" label="Time of day" value={filters.time} options={facets.times} />
-      <SelectFilter name="weather" label="Weather" value={filters.weather} options={facets.weather} />
       <label className="block text-sm font-semibold text-text-secondary">
         Sort
         <select

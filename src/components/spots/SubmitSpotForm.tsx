@@ -477,9 +477,9 @@ export function SubmitSpotForm({ mode = "create", spot }: SubmitSpotFormProps) {
             <span className="mt-2 max-w-sm text-sm leading-6 text-text-secondary">
               {totalImages >= 2
                 ? "Remove one screenshot to choose a different image."
-                : "JPG, PNG, or WebP screenshot. You can add a second angle when it helps."}
+                : ""}
             </span>
-            <ul className="mt-4 max-w-md space-y-1 text-left text-xs leading-5 text-text-muted">
+            <ul className="mt-4 max-w-md space-y-1 text-left text-sm leading-5 text-text-muted">
               <li>Use unedited game screenshots without shaders, filters, or post-processing.</li>
               <li>Keep the focus on the landscape; avoid characters and creatures when possible.</li>
             </ul>

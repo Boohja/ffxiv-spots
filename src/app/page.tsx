@@ -12,7 +12,7 @@ export default function Home() {
   const recent = [...photoSpots]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 3);
-  const facets = getSpotFacets();
+  const facets = getSpotFacets(photoSpots);
 
   return (
     <main>

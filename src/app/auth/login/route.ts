@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (error || !data.url) {
-    return NextResponse.redirect(`${origin}/auth/error`);
+    return NextResponse.redirect(`${origin}/auth/error?reason=oauth_start_failed`);
   }
 
   return NextResponse.redirect(data.url);

@@ -10,69 +10,13 @@ function FooterLogo() {
     <Link href="/" className="inline-flex items-center gap-3" aria-label="xivspots home">
       <Image
         src="/brand/icon.webp"
-        alt=""
+        alt="XIVSpots Logo"
         width={510}
         height={510}
-        className="h-14 w-14 shrink-0 object-contain"
+        className="h-30 w-30 shrink-0 object-contain"
         sizes="56px"
         unoptimized
       />
-      <svg
-        aria-hidden="true"
-        className="h-[38px] w-[132px] shrink-0"
-        viewBox="0 0 208 60"
-        role="img"
-      >
-        <defs>
-          <linearGradient id="footerLogoWordGradient" x1="102" y1="5" x2="204" y2="55" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#2F8CFF" />
-            <stop offset="1" stopColor="#22D3EE" />
-          </linearGradient>
-          <radialGradient id="footerLogoSparkGradient" cx="50%" cy="50%" r="65%">
-            <stop stopColor="#A7FAFF" />
-            <stop offset="0.45" stopColor="#5DEBFF" />
-            <stop offset="1" stopColor="#1C6BFF" />
-          </radialGradient>
-        </defs>
-        <text
-          x="0"
-          y="45"
-          fill="#F8FAFC"
-          fontFamily="var(--font-display), Segoe UI, sans-serif"
-          fontSize="50"
-          fontWeight="700"
-          letterSpacing="0"
-        >
-          x
-        </text>
-        <rect x="33" y="27" width="8" height="19" rx="4" fill="#F8FAFC" />
-        <path
-          d="M37 0L39.5 8.5L48 11L39.5 13.5L37 22L34.5 13.5L26 11L34.5 8.5L37 0Z"
-          fill="url(#footerLogoSparkGradient)"
-        />
-        <text
-          x="45"
-          y="45"
-          fill="#F8FAFC"
-          fontFamily="var(--font-display), Segoe UI, sans-serif"
-          fontSize="50"
-          fontWeight="700"
-          letterSpacing="0"
-        >
-          v
-        </text>
-        <text
-          x="75"
-          y="45"
-          fill="url(#footerLogoWordGradient)"
-          fontFamily="var(--font-display), Segoe UI, sans-serif"
-          fontSize="50"
-          fontWeight="600"
-          letterSpacing="0"
-        >
-          spots
-        </text>
-      </svg>
     </Link>
   );
 }
