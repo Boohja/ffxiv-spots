@@ -70,7 +70,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
 
   const isOwner = Boolean(user?.id && profile.id === user.id);
   const displayname = profile.displayname ?? "XIVSpots user";
-  const acceptedSubmissions = await getAcceptedPhotoSpotsBySubmitter(supabase, profile.id);
+  const acceptedSubmissions = await getAcceptedPhotoSpotsBySubmitter(supabase, profile.id, user?.id);
   const socialLinks = [
     profile.social_x
       ? {
@@ -133,7 +133,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
                 target="_blank"
                 className="rounded-full border border-border-default bg-surface-base px-3 py-1 text-xs font-semibold text-text-primary transition hover:border-border-active/70"
               >
-                {link.label}: @{link.handle}
+                {link.label}: {link.handle}
               </a>
             ))
           ) : (
@@ -167,7 +167,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
             {acceptedSubmissions.length} accepted
           </p>
         </div>
-        <SpotGrid spots={acceptedSubmissions} />
+        <SpotGrid canLike={Boolean(user)} spots={acceptedSubmissions} />
       </section>
     </main>
   );

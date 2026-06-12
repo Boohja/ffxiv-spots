@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { createNotification } from "@/lib/notifications/server";
-import { parseSpotTags } from "@/lib/spots/tags";
+import {
+  maxSpotAccessNotesLength,
+  maxSpotDescriptionLength,
+  maxSpotTitleLength,
+} from "@/lib/spots/limits";
+import { parseSpotTags, validateSpotTags } from "@/lib/spots/tags";
 import { zonesByName } from "@/lib/spots/zones";
 import { createClient } from "@/lib/supabase/server";
 import { deleteStoredImage, uploadImageFile, UploadValidationError } from "@/lib/uploads/storage";
@@ -286,6 +291,8 @@ function parseAction(value: FormDataEntryValue | null): SpotAction | undefined {
 }
 
 function parseSpotInput(formData: FormData) {
+  const tagsValue = formData.get("tags");
+
   return {
     zone: stringValue(formData.get("zone")),
     x: parseCoordinate(formData.get("x")),
@@ -294,7 +301,8 @@ function parseSpotInput(formData: FormData) {
     title: stringValue(formData.get("title")),
     description: stringValue(formData.get("description")),
     accessNotes: stringValue(formData.get("accessibilityNotes")),
-    tags: parseSpotTags(formData.get("tags")),
+    tags: parseSpotTags(tagsValue),
+    tagsValue,
   };
 }
 
@@ -310,6 +318,24 @@ function validateEditInput(
     state: SpotState;
   },
 ) {
+  if (input.title && input.title.length > maxSpotTitleLength) {
+    return `Keep the title to ${maxSpotTitleLength} characters or fewer.`;
+  }
+
+  if (input.description && input.description.length > maxSpotDescriptionLength) {
+    return `Keep the description to ${maxSpotDescriptionLength} characters or fewer.`;
+  }
+
+  if (input.accessNotes && input.accessNotes.length > maxSpotAccessNotesLength) {
+    return `Keep access notes to ${maxSpotAccessNotesLength} characters or fewer.`;
+  }
+
+  const tagError = validateSpotTags(input.tagsValue);
+
+  if (tagError) {
+    return tagError;
+  }
+
   if (!input.zone || !zonesByName.has(input.zone)) {
     return "Choose a known zone from the zone list.";
   }

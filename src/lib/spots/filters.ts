@@ -1,9 +1,9 @@
 import type { PhotoSpot, SpotFilters, SpotSort } from "@/lib/spots/types";
 
 export const sortOptions = [
+  { value: "likes", label: "Most liked" },
   { value: "newest", label: "Newest" },
   { value: "title", label: "Title" },
-  { value: "zone", label: "Zone" },
 ] satisfies { value: SpotSort; label: string }[];
 
 export function getSpotFacets(spots: PhotoSpot[]) {
@@ -26,7 +26,8 @@ export function filterSpots(spots: PhotoSpot[], filters: SpotFilters) {
       (!filters.region || spot.region === filters.region) &&
       (!filters.zone || spot.zone === filters.zone) &&
       (!filters.landmark || spot.landmark === filters.landmark) &&
-      (!filters.tag || spot.tags.includes(filters.tag))
+      (!filters.tag || spot.tags.includes(filters.tag)) &&
+      (!filters.liked || spot.likedByViewer)
     );
   });
 
@@ -53,8 +54,8 @@ function sortSpots(spots: PhotoSpot[], sort: SpotSort) {
       return a.title.localeCompare(b.title);
     }
 
-    if (sort === "zone") {
-      return a.zone.localeCompare(b.zone) || a.title.localeCompare(b.title);
+    if (sort === "likes") {
+      return b.likeCount - a.likeCount || newestFirst(a, b);
     }
 
     return newestFirst(a, b);

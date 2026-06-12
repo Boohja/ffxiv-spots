@@ -4,6 +4,7 @@ import { sortOptions } from "@/lib/spots/filters";
 import type { SpotFilters } from "@/lib/spots/types";
 
 type FilterPanelProps = Readonly<{
+  canShowLikedOnly?: boolean;
   facets: {
     expansions: string[];
     regions: string[];
@@ -14,7 +15,7 @@ type FilterPanelProps = Readonly<{
   filters: SpotFilters;
 }>;
 
-export function FilterPanel({ facets, filters }: FilterPanelProps) {
+export function FilterPanel({ canShowLikedOnly = false, facets, filters }: FilterPanelProps) {
   return (
     <form action="/spots" className="glass-panel sticky top-4 space-y-4 rounded-lg p-4">
       <div>
@@ -48,6 +49,18 @@ export function FilterPanel({ facets, filters }: FilterPanelProps) {
           ))}
         </select>
       </label>
+      {canShowLikedOnly ? (
+        <label className="flex items-center gap-3 rounded-lg border border-border-default bg-surface-base px-3 py-2 text-sm font-semibold text-text-secondary">
+          <input
+            name="liked"
+            type="checkbox"
+            value="true"
+            defaultChecked={filters.liked}
+            className="h-4 w-4 accent-brand-gold"
+          />
+          Liked by me
+        </label>
+      ) : null}
       <div className="grid grid-cols-2 gap-2 pt-2">
         <Link
           href="/spots"

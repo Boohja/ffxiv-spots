@@ -7,9 +7,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { SpotStateBadge } from "@/components/spots/SpotStateBadge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import {
+  maxSpotAccessNotesLength,
+  maxSpotDescriptionLength,
+  maxSpotTagsInputLength,
+  maxSpotTitleLength,
+} from "@/lib/spots/limits";
+import { validateSpotTags } from "@/lib/spots/tags";
 import { zoneMetadata, type ZoneMetadata } from "@/lib/spots/zones";
 
 type NearbyLandmark = {
@@ -199,7 +207,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
 
     const formData = new FormData(form);
     const title = String(formData.get("title") ?? "").trim() || suggestedTitle;
-    const validationError = validateSubmission(action, title);
+    const validationError = validateSubmission(action, title, formData);
 
     if (isCreateMode) {
       formData.set("state", action === "accept" ? "accepted" : action === "save_draft" || action === "draft" ? "draft" : "submitted");
@@ -287,9 +295,31 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
     }
   }
 
-  function validateSubmission(action: SubmitMode | EditAction, title: string) {
+  function validateSubmission(action: SubmitMode | EditAction, title: string, formData: FormData) {
     if (action === "revoke" || action === "delete") {
       return undefined;
+    }
+
+    if (title.length > maxSpotTitleLength) {
+      return `Keep the title to ${maxSpotTitleLength} characters or fewer.`;
+    }
+
+    const description = String(formData.get("description") ?? "").trim();
+
+    if (description.length > maxSpotDescriptionLength) {
+      return `Keep the description to ${maxSpotDescriptionLength} characters or fewer.`;
+    }
+
+    const accessNotes = String(formData.get("accessibilityNotes") ?? "").trim();
+
+    if (accessNotes.length > maxSpotAccessNotesLength) {
+      return `Keep access notes to ${maxSpotAccessNotesLength} characters or fewer.`;
+    }
+
+    const tagError = validateSpotTags(formData.get("tags"));
+
+    if (tagError) {
+      return tagError;
     }
 
     if (!metadata) {
@@ -434,6 +464,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
               <Textarea
                 id="spot-access"
                 name="accessibilityNotes"
+                maxLength={maxSpotAccessNotesLength}
                 rows={3}
                 defaultValue={spot?.access_notes ?? ""}
                 placeholder="Nearest aetheryte, flying needs, quest access, party size notes..."
@@ -446,12 +477,19 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
           <SectionHeading eyebrow="Details" title="What makes it worth visiting?" />
           <div className="mt-5 space-y-4">
             <Field label="Spot title" htmlFor="spot-title">
-              <Input id="spot-title" name="title" defaultValue={spot?.title ?? ""} placeholder={suggestedTitle} />
+              <Input
+                id="spot-title"
+                name="title"
+                defaultValue={spot?.title ?? ""}
+                maxLength={maxSpotTitleLength}
+                placeholder={suggestedTitle}
+              />
             </Field>
             <Field label="Description (optional)" htmlFor="spot-description">
               <Textarea
                 id="spot-description"
                 name="description"
+                maxLength={maxSpotDescriptionLength}
                 rows={5}
                 defaultValue={spot?.description ?? ""}
                 placeholder="A cliffside view with layered sea haze, lantern glow, and open sky for portraits."
@@ -462,6 +500,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
                 id="spot-tags"
                 name="tags"
                 defaultValue={spot?.tags?.join(", ") ?? ""}
+                maxLength={maxSpotTagsInputLength}
                 placeholder="scenery, sunset, ocean, portraits"
               />
             </Field>
@@ -608,7 +647,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
         <section className="glass-panel rounded-lg p-5">
           <SectionHeading eyebrow="Review" title="Submission status" />
           <dl className="mt-5 space-y-3">
-            <SummaryRow label="Status" value={statusLabel} />
+            <SummaryRow label="Status" value={<SpotStateBadge label={statusLabel} state={spot?.state ?? "draft"} />} />
             <SummaryRow label="Images" value={totalImages ? String(totalImages) : "None"} />
             <SummaryRow label="Updated" value={updatedLabel} />
           </dl>
@@ -995,7 +1034,7 @@ function DerivedField({
   );
 }
 
-function SummaryRow({ label, value }: Readonly<{ label: string; value: string }>) {
+function SummaryRow({ label, value }: Readonly<{ label: string; value: ReactNode }>) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-border-subtle/70 pb-3 last:border-0 last:pb-0">
       <dt className="text-sm text-text-muted">{label}</dt>

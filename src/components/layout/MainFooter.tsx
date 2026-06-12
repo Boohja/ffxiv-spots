@@ -34,7 +34,7 @@ export function MainFooter() {
           used under the{" "}
           <a
             href="https://support.na.square-enix.com/rule.php?id=5382&la=1&tag=authc"
-            className="font-semibold text-brand-spark hover:text-text-primary"
+            className="text-text-secondary hover:text-brand-gold"
           >
             FINAL FANTASY XIV Materials Usage License
           </a>

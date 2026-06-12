@@ -248,6 +248,46 @@ describe("POST /api/spots", () => {
     expect(uploadImageFile).not.toHaveBeenCalled();
   });
 
+  it("rejects oversized text fields before inserting", async () => {
+    const harness = makeHarness();
+
+    const response = await POST(
+      makeRequest(
+        makeFormData({
+          state: "draft",
+          zone: "Upper La Noscea",
+          x: "10",
+          y: "20",
+          title: "x".repeat(71),
+        }),
+      ),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await responseJson(response)).toEqual({ error: "Keep the title to 70 characters or fewer." });
+    expect(harness.spotInserts).toEqual([]);
+  });
+
+  it("rejects oversized tags before inserting", async () => {
+    const harness = makeHarness();
+
+    const response = await POST(
+      makeRequest(
+        makeFormData({
+          state: "draft",
+          zone: "Upper La Noscea",
+          x: "10",
+          y: "20",
+          tags: "short, this-tag-is-way-too-long-for-the-ui",
+        }),
+      ),
+    );
+
+    expect(response.status).toBe(400);
+    expect(await responseJson(response)).toEqual({ error: "Keep each tag to 24 characters or fewer." });
+    expect(harness.spotInserts).toEqual([]);
+  });
+
   it("uploads screenshots and stores image rows for submitted spots", async () => {
     const harness = makeHarness();
     const file = new File(["jpg bytes"], "spot.jpg", { type: "image/jpeg" });

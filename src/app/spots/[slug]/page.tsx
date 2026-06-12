@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ImageGallery } from "@/components/spots/ImageGallery";
+import { LikeButton } from "@/components/spots/LikeButton";
 import { SpotGrid } from "@/components/spots/SpotGrid";
 import { SpotStateBadge, type SpotStateBadgeState } from "@/components/spots/SpotStateBadge";
 import { SearchPill } from "@/components/spots/TagPill";
@@ -43,6 +44,8 @@ type DatabaseSpot = {
     alt: string | null;
     sort_order: number;
   }[];
+  likeCount?: number;
+  likedByViewer?: boolean;
 };
 
 export function generateStaticParams() {
@@ -61,18 +64,22 @@ export async function generateMetadata({ params }: SpotDetailPageProps): Promise
 
 export default async function SpotDetailPage({ params }: SpotDetailPageProps) {
   const { slug } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const databaseSpot = await getDatabaseSpotBySlug(slug);
+  const databaseSpot = await getDatabaseSpotBySlug(slug, user?.id);
   if (!databaseSpot) {
     notFound();
   }
 
   const canEdit = await canViewerEditSpots();
-  const related = databaseSpot.state === "accepted" ? await getRelatedAcceptedSpots(databaseSpot.id) : [];
+  const related = databaseSpot.state === "accepted" ? await getRelatedAcceptedSpots(databaseSpot.id, user?.id) : [];
 
   return (
     <main className="mx-auto w-full max-w-6xl space-y-10 px-4 py-10">
-      <DatabaseSpotDetail canEdit={canEdit} spot={databaseSpot} />
+      <DatabaseSpotDetail canEdit={canEdit} canLike={Boolean(user)} spot={databaseSpot} />
 
       {related.length > 0 ? (
         <section className="space-y-4">
@@ -80,14 +87,14 @@ export default async function SpotDetailPage({ params }: SpotDetailPageProps) {
             <p className="text-sm font-semibold uppercase text-brand-spark">Related</p>
             <h2 className="mt-1 text-3xl font-semibold text-text-primary">Nearby moods and zones</h2>
           </div>
-          <SpotGrid spots={related} />
+          <SpotGrid canLike={Boolean(user)} spots={related} />
         </section>
       ) : null}
     </main>
   );
 }
 
-async function getDatabaseSpotBySlug(slug: string) {
+async function getDatabaseSpotBySlug(slug: string, viewerId?: string | null) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("spots")
@@ -100,7 +107,43 @@ async function getDatabaseSpotBySlug(slug: string) {
     return null;
   }
 
-  return data;
+  if (!data) {
+    return data;
+  }
+
+  const { data: likeCountRow, error: likeCountError } = await supabase
+    .from("spots")
+    .select("like_count")
+    .eq("id", data.id)
+    .maybeSingle<{ like_count: number }>();
+
+  if (likeCountError && !isMissingLikeSchemaError(likeCountError)) {
+    throw likeCountError;
+  }
+
+  if (!viewerId) {
+    return {
+      ...data,
+      likeCount: likeCountRow?.like_count ?? 0,
+    };
+  }
+
+  const { data: like, error: likeError } = await supabase
+    .from("spot_likes")
+    .select("spot_id")
+    .eq("spot_id", data.id)
+    .eq("user_id", viewerId)
+    .maybeSingle<{ spot_id: string }>();
+
+  if (likeError && !isMissingLikeSchemaError(likeError)) {
+    throw likeError;
+  }
+
+  return {
+    ...data,
+    likeCount: likeCountRow?.like_count ?? 0,
+    likedByViewer: Boolean(like),
+  };
 }
 
 async function canViewerEditSpots() {
@@ -122,18 +165,20 @@ async function canViewerEditSpots() {
   return data?.role === "moderator" || data?.role === "admin";
 }
 
-async function getRelatedAcceptedSpots(currentSpotId: string) {
+async function getRelatedAcceptedSpots(currentSpotId: string, viewerId?: string | null) {
   const supabase = await createClient();
-  const acceptedSpots = await getAcceptedPhotoSpots(supabase);
+  const acceptedSpots = await getAcceptedPhotoSpots(supabase, viewerId);
 
   return acceptedSpots.filter((spot) => spot.id !== currentSpotId).slice(0, 3);
 }
 
 function DatabaseSpotDetail({
   canEdit,
+  canLike,
   spot,
 }: Readonly<{
   canEdit: boolean;
+  canLike: boolean;
   spot: DatabaseSpot;
 }>) {
   const zone = getZoneMetadata(spot.zone);
@@ -154,10 +199,24 @@ function DatabaseSpotDetail({
         description={spot.description ?? undefined}
         editHref={canEdit ? `/spots/${spot.slug}/edit` : undefined}
         images={images}
+        likeButton={
+          <LikeButton
+            canLike={canLike}
+            initialLiked={Boolean(spot.likedByViewer)}
+            initialLikeCount={spot.likeCount ?? 0}
+            spotId={spot.id}
+            variant="detail"
+          />
+        }
         locationRows={[
           ["Expansion", <SearchTextLink key="expansion" filter="expansion" label={zone.expansion} />],
           ["Region", <SearchTextLink key="region" filter="region" label={zone.region} />],
           ["Zone", <SearchTextLink key="zone" filter="zone" label={spot.zone} />],
+          ["Coordinates", formatCoordinates({ x: spot.x, y: spot.y })],
+          ...(spot.z === null ? [] : [["Elevation", `Z ${spot.z}`] as [string, string]]),
+          ...(spot.landmarks?.name
+            ? [["Landmark", <SearchTextLink key="landmark" filter="landmark" label={spot.landmarks.name} />] as [string, ReactNode]]
+            : []),
           ...(spot.submitted_by
             ? [
                 [
@@ -167,11 +226,6 @@ function DatabaseSpotDetail({
                   </Link>,
                 ] as [string, ReactNode],
               ]
-            : []),
-          ["Coordinates", formatCoordinates({ x: spot.x, y: spot.y })],
-          ...(spot.z === null ? [] : [["Elevation", `Z ${spot.z}`] as [string, string]]),
-          ...(spot.landmarks?.name
-            ? [["Landmark", <SearchTextLink key="landmark" filter="landmark" label={spot.landmarks.name} />] as [string, ReactNode]]
             : []),
         ]}
         secondaryDetails={[]}
@@ -184,12 +238,17 @@ function DatabaseSpotDetail({
   );
 }
 
+function isMissingLikeSchemaError(error: { code?: string }) {
+  return error.code === "42703" || error.code === "42P01" || error.code === "PGRST205";
+}
+
 function SpotDetailLayout({
   accessNotes,
   breadcrumb,
   description,
   editHref,
   images,
+  likeButton,
   locationRows,
   secondaryDetails,
   statusLabel,
@@ -202,6 +261,7 @@ function SpotDetailLayout({
   description?: string;
   editHref?: string;
   images: SpotImage[];
+  likeButton: ReactNode;
   locationRows: [string, ReactNode | undefined][];
   secondaryDetails: [string, ReactNode | undefined][];
   statusLabel?: string;
@@ -282,6 +342,7 @@ function SpotDetailLayout({
               Edit
             </Link>
           ) : null}
+          {likeButton}
         </aside>
       </div>
     </div>

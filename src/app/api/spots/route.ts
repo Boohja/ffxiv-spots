@@ -2,7 +2,12 @@ import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-import { parseSpotTags } from "@/lib/spots/tags";
+import {
+  maxSpotAccessNotesLength,
+  maxSpotDescriptionLength,
+  maxSpotTitleLength,
+} from "@/lib/spots/limits";
+import { parseSpotTags, validateSpotTags } from "@/lib/spots/tags";
 import { createClient } from "@/lib/supabase/server";
 import { uploadImageFile, UploadValidationError } from "@/lib/uploads/storage";
 import { zonesByName } from "@/lib/spots/zones";
@@ -37,8 +42,9 @@ export async function POST(request: Request) {
     const submittedTitle = stringValue(formData.get("title"));
     const description = stringValue(formData.get("description"));
     const accessNotes = stringValue(formData.get("accessibilityNotes"));
+    const tagsValue = formData.get("tags");
     const landmarkId = parseOptionalInteger(formData.get("landmarkId"));
-    const tags = parseSpotTags(formData.get("tags"));
+    const tags = parseSpotTags(tagsValue);
     const files = formData
       .getAll("images")
       .filter((value): value is File => value instanceof File);
@@ -47,7 +53,11 @@ export async function POST(request: Request) {
 
     const validationError = validateSpotInput({
       files,
+      accessNotes,
+      description,
       state,
+      tagsValue,
+      title: submittedTitle,
       x,
       y,
       z,
@@ -176,14 +186,22 @@ async function getViewerRole(supabase: Awaited<ReturnType<typeof createClient>>,
 
 function validateSpotInput({
   files,
+  accessNotes,
+  description,
   state,
+  tagsValue,
+  title,
   x,
   y,
   z,
   zone,
 }: {
   files: File[];
+  accessNotes: string | undefined;
+  description: string | undefined;
   state: SpotState | undefined;
+  tagsValue: FormDataEntryValue | null;
+  title: string | undefined;
   x: number | undefined;
   y: number | undefined;
   z: number | undefined;
@@ -191,6 +209,24 @@ function validateSpotInput({
 }) {
   if (!state) {
     return "Choose whether to submit or save a draft.";
+  }
+
+  if (title && title.length > maxSpotTitleLength) {
+    return `Keep the title to ${maxSpotTitleLength} characters or fewer.`;
+  }
+
+  if (description && description.length > maxSpotDescriptionLength) {
+    return `Keep the description to ${maxSpotDescriptionLength} characters or fewer.`;
+  }
+
+  if (accessNotes && accessNotes.length > maxSpotAccessNotesLength) {
+    return `Keep access notes to ${maxSpotAccessNotesLength} characters or fewer.`;
+  }
+
+  const tagError = validateSpotTags(tagsValue);
+
+  if (tagError) {
+    return tagError;
   }
 
   if (!zone || !zonesByName.has(zone)) {

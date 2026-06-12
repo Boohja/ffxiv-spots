@@ -31,6 +31,8 @@ export type PhotoSpot = {
   bestWeather?: string[];
   accessibilityNotes?: string[];
   images: SpotImage[];
+  likeCount: number;
+  likedByViewer: boolean;
   createdAt: string;
   updatedAt: string;
   submitter?: {
@@ -62,7 +64,7 @@ export type DuplicateCandidate = {
   reasons: string[];
 };
 
-export type SpotSort = "newest" | "title" | "zone";
+export type SpotSort = "likes" | "newest" | "title";
 
 export type SpotFilters = {
   query?: string;
@@ -71,5 +73,6 @@ export type SpotFilters = {
   zone?: string;
   landmark?: string;
   tag?: string;
+  liked?: boolean;
   sort?: SpotSort;
 };

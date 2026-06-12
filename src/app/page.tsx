@@ -15,9 +15,14 @@ const placeholderHero = {
 
 export default async function Home() {
   const supabase = await createClient();
-  const acceptedSpots = await getAcceptedPhotoSpots(supabase);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const acceptedSpots = await getAcceptedPhotoSpots(supabase, user?.id);
   const heroSpot = pickRandomSpot(acceptedSpots);
-  const mostLiked = pickRandomSpots(acceptedSpots, 3);
+  const mostLiked = [...acceptedSpots]
+    .sort((a, b) => b.likeCount - a.likeCount || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 3);
   const recent = acceptedSpots.slice(0, 3);
   const facets = getSpotFacets(acceptedSpots);
   const heroImage = heroSpot?.images[0] ?? placeholderHero;
@@ -99,19 +104,18 @@ export default async function Home() {
       </section>
 
       <div className="mx-auto w-full max-w-6xl space-y-12 px-4 py-12">
-        <FeaturedSection spots={mostLiked} />
+        <FeaturedSection canLike={Boolean(user)} spots={mostLiked} />
 
         <section className="space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold uppercase text-brand-spark">Recently added</p>
-              <h2 className="mt-1 text-3xl font-semibold text-text-primary">Fresh from the atlas</h2>
+              <h2 className="mt-1 text-3xl font-semibold text-text-primary">Recently added</h2>
             </div>
             <Link href="/spots" className="text-sm font-semibold text-amber-200 hover:text-amber-100">
               View all spots
             </Link>
           </div>
-          <SpotGrid spots={recent} />
+          <SpotGrid canLike={Boolean(user)} spots={recent} />
         </section>
       </div>
     </main>
@@ -161,8 +165,4 @@ function HeroImage({
 
 function pickRandomSpot<T>(items: T[]) {
   return items[Math.floor(Math.random() * items.length)];
-}
-
-function pickRandomSpots<T>(items: T[], count: number) {
-  return [...items].sort(() => Math.random() - 0.5).slice(0, count);
 }

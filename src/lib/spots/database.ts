@@ -38,7 +38,7 @@ export type DatabaseSpotRow = {
 const acceptedSpotSelect =
   "id,slug,state,zone,x,y,z,title,description,tags,access_notes,created_at,updated_at,accepted_at,submitter:app_users!spots_submitted_by_fkey(id,displayname),landmarks(name),spot_images(url,alt,width,height,sort_order)";
 
-export async function getAcceptedPhotoSpots(supabase: SupabaseClient) {
+export async function getAcceptedPhotoSpots(supabase: SupabaseClient, viewerId?: string | null) {
   const { data, error } = await supabase
     .from("spots")
     .select(acceptedSpotSelect)
@@ -51,12 +51,13 @@ export async function getAcceptedPhotoSpots(supabase: SupabaseClient) {
     throw error;
   }
 
-  return (data ?? []).map(toPhotoSpot);
+  return hydrateLikeState(supabase, (data ?? []).map(toPhotoSpot), viewerId);
 }
 
 export async function getAcceptedPhotoSpotsBySubmitter(
   supabase: SupabaseClient,
   submitterId: string,
+  viewerId?: string | null,
 ) {
   const { data, error } = await supabase
     .from("spots")
@@ -71,7 +72,7 @@ export async function getAcceptedPhotoSpotsBySubmitter(
     throw error;
   }
 
-  return (data ?? []).map(toPhotoSpot);
+  return hydrateLikeState(supabase, (data ?? []).map(toPhotoSpot), viewerId);
 }
 
 export function toPhotoSpot(spot: DatabaseSpotRow): PhotoSpot {
@@ -94,10 +95,66 @@ export function toPhotoSpot(spot: DatabaseSpotRow): PhotoSpot {
     tags: spot.tags ?? [],
     accessibilityNotes: spot.access_notes ? [spot.access_notes] : undefined,
     images: toSpotImages(spot),
+    likeCount: 0,
+    likedByViewer: false,
     createdAt: spot.created_at,
     updatedAt: spot.updated_at,
     submitter: spot.submitter,
   };
+}
+
+async function hydrateLikeState(supabase: SupabaseClient, spots: PhotoSpot[], viewerId?: string | null) {
+  if (spots.length === 0) {
+    return spots;
+  }
+
+  const { data: likeCounts, error: likeCountError } = await supabase
+    .from("spots")
+    .select("id, like_count")
+    .in(
+      "id",
+      spots.map((spot) => spot.id),
+    )
+    .returns<{ id: string; like_count: number }[]>();
+
+  if (likeCountError && !isMissingLikeSchemaError(likeCountError)) {
+    throw likeCountError;
+  }
+
+  const countsBySpotId = new Map((likeCounts ?? []).map((spot) => [spot.id, spot.like_count]));
+
+  if (!viewerId) {
+    return spots.map((spot) => ({
+      ...spot,
+      likeCount: countsBySpotId.get(spot.id) ?? 0,
+    }));
+  }
+
+  const { data: viewerLikes, error: viewerLikesError } = await supabase
+    .from("spot_likes")
+    .select("spot_id")
+    .eq("user_id", viewerId)
+    .in(
+      "spot_id",
+      spots.map((spot) => spot.id),
+    )
+    .returns<{ spot_id: string }[]>();
+
+  if (viewerLikesError && !isMissingLikeSchemaError(viewerLikesError)) {
+    throw viewerLikesError;
+  }
+
+  const likedSpotIds = new Set((viewerLikes ?? []).map((like) => like.spot_id));
+
+  return spots.map((spot) => ({
+    ...spot,
+    likeCount: countsBySpotId.get(spot.id) ?? 0,
+    likedByViewer: likedSpotIds.has(spot.id),
+  }));
+}
+
+function isMissingLikeSchemaError(error: { code?: string }) {
+  return error.code === "42703" || error.code === "42P01" || error.code === "PGRST205";
 }
 
 function toSpotImages(spot: DatabaseSpotRow): SpotImage[] {

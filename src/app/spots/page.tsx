@@ -17,9 +17,12 @@ export const metadata = {
 
 export default async function SpotsPage({ searchParams }: SpotsPageProps) {
   const params = await searchParams;
-  const filters = parseFilters(params);
   const supabase = await createClient();
-  const allSpots = await getAcceptedPhotoSpots(supabase);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const filters = parseFilters(params, Boolean(user));
+  const allSpots = await getAcceptedPhotoSpots(supabase, user?.id);
   const spots = filterSpots(allSpots, filters);
   const facets = getSpotFacets(allSpots);
 
@@ -39,14 +42,14 @@ export default async function SpotsPage({ searchParams }: SpotsPageProps) {
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[280px_1fr]">
-        <FilterPanel facets={facets} filters={filters} />
-        <SpotGrid spots={spots} />
+        <FilterPanel canShowLikedOnly={Boolean(user)} facets={facets} filters={filters} />
+        <SpotGrid canLike={Boolean(user)} spots={spots} />
       </div>
     </main>
   );
 }
 
-function parseFilters(params: Record<string, string | string[] | undefined>): SpotFilters {
+function parseFilters(params: Record<string, string | string[] | undefined>, canFilterLiked: boolean): SpotFilters {
   return {
     query: single(params.q),
     expansion: parseExpansion(single(params.expansion)),
@@ -54,7 +57,8 @@ function parseFilters(params: Record<string, string | string[] | undefined>): Sp
     zone: single(params.zone),
     landmark: single(params.landmark),
     tag: single(params.tag),
-    sort: parseSort(single(params.sort)),
+    liked: canFilterLiked && single(params.liked) === "true",
+    sort: parseSort(single(params.sort) ?? single(params.sortby)),
   };
 }
 
@@ -63,7 +67,7 @@ function single(value: string | string[] | undefined) {
 }
 
 function parseSort(value?: string): SpotSort | undefined {
-  return value === "title" || value === "zone" || value === "newest" ? value : undefined;
+  return value === "likes" || value === "title" || value === "newest" ? value : undefined;
 }
 
 function parseExpansion(value?: string): Expansion | undefined {

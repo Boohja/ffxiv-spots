@@ -148,8 +148,35 @@ describe("SubmitSpotForm", () => {
   it("hides save and accept when reviewing an already accepted spot", () => {
     render(<SubmitSpotForm mode="review" spot={makeEditableSpot()} />);
 
+    expect(screen.getByText("Accepted")).toHaveClass("rounded-full");
     expect(screen.queryByRole("button", { name: "Save and accept" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save and return" })).toBeInTheDocument();
+  });
+
+  it("applies text length limits to title, description, access notes, and tags", () => {
+    render(<SubmitSpotForm />);
+
+    expect(screen.getByLabelText("Spot title")).toHaveAttribute("maxlength", "70");
+    expect(screen.getByLabelText("Description (optional)")).toHaveAttribute("maxlength", "1200");
+    expect(screen.getByLabelText("Access notes (optional)")).toHaveAttribute("maxlength", "600");
+    expect(screen.getByLabelText("Tags (optional)")).toHaveAttribute("maxlength", "320");
+  });
+
+  it("shows a validation error for overlong tags before saving", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<SubmitSpotForm />);
+
+    fireEvent.change(screen.getByLabelText("Zone"), { target: { value: "Upper La Noscea" } });
+    fireEvent.change(screen.getByLabelText("X"), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText("Y"), { target: { value: "20" } });
+    fireEvent.change(screen.getByLabelText("Tags (optional)"), {
+      target: { value: "short, this-tag-is-way-too-long-for-the-ui" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+
+    expect(await screen.findByText("Keep each tag to 24 characters or fewer.")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("shows save and accept for staff creating a new spot", () => {
