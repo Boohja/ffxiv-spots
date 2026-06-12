@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
+import { SpotGrid } from "@/components/spots/SpotGrid";
 import { ProfileEditForm } from "@/components/users/ProfileEditForm";
-import type { UserRole } from "@/lib/spots/types";
+import { getAcceptedPhotoSpotsBySubmitter } from "@/lib/spots/database";
 import { createClient } from "@/lib/supabase/server";
-import { canViewUserProfile, isOwnProfile } from "@/lib/users/profile-visibility";
 
 type UserProfilePageProps = Readonly<{
   params: Promise<{ id: string }>;
@@ -16,13 +16,8 @@ type PublicProfile = {
   displayname: string | null;
   avatar_url: string | null;
   created_at: string;
-  public: boolean;
   social_x: string | null;
   social_instagram: string | null;
-};
-
-type ViewerProfile = {
-  role: UserRole;
 };
 
 const uuidPattern =
@@ -36,17 +31,13 @@ export async function generateMetadata({ params }: UserProfilePageProps): Promis
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const viewerRole = await getViewerRole(supabase, user?.id);
   const { data: profile } = await supabase
     .from("app_users")
-    .select("id, displayname, public")
+    .select("id, displayname")
     .eq("id", id)
-    .maybeSingle<Pick<PublicProfile, "id" | "displayname" | "public">>();
+    .maybeSingle<Pick<PublicProfile, "id" | "displayname">>();
 
-  if (!canViewUserProfile(profile, user?.id, viewerRole)) {
+  if (!profile) {
     return { title: "User not found | XIVSpots" };
   }
 
@@ -67,19 +58,19 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const viewerRole = await getViewerRole(supabase, user?.id);
   const { data: profile, error } = await supabase
     .from("app_users")
-    .select("id, displayname, avatar_url, created_at, public, social_x, social_instagram")
+    .select("id, displayname, avatar_url, created_at, social_x, social_instagram")
     .eq("id", id)
     .maybeSingle<PublicProfile>();
 
-  if (error || !canViewUserProfile(profile, user?.id, viewerRole)) {
+  if (error || !profile) {
     notFound();
   }
 
-  const isOwner = isOwnProfile(profile, user?.id);
+  const isOwner = Boolean(user?.id && profile.id === user.id);
   const displayname = profile.displayname ?? "XIVSpots user";
+  const acceptedSubmissions = await getAcceptedPhotoSpotsBySubmitter(supabase, profile.id);
   const socialLinks = [
     profile.social_x
       ? {
@@ -133,9 +124,6 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
         </div>
 
         <div className="mt-6 flex flex-wrap gap-2">
-          <span className="rounded-full border border-border-default bg-surface-base px-3 py-1 text-xs font-semibold text-text-secondary">
-            {profile.public ? "Public" : "Private"}
-          </span>
           {socialLinks.length > 0 ? (
             socialLinks.map((link) => (
               <a
@@ -162,32 +150,27 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
             profile={{
               id: profile.id,
               displayname,
-              public: profile.public,
               social_x: profile.social_x,
               social_instagram: profile.social_instagram,
             }}
           />
         </section>
       ) : null}
+
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold uppercase text-brand-spark">Submissions</p>
+            <h2 className="mt-1 text-3xl font-semibold text-text-primary">Accepted spots</h2>
+          </div>
+          <p className="rounded-full border border-border-default bg-surface-base px-3 py-1 text-sm text-text-secondary">
+            {acceptedSubmissions.length} accepted
+          </p>
+        </div>
+        <SpotGrid spots={acceptedSubmissions} />
+      </section>
     </main>
   );
-}
-
-async function getViewerRole(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  viewerId?: string | null,
-) {
-  if (!viewerId) {
-    return null;
-  }
-
-  const { data } = await supabase
-    .from("app_users")
-    .select("role")
-    .eq("id", viewerId)
-    .maybeSingle<ViewerProfile>();
-
-  return data?.role ?? null;
 }
 
 function formatMemberSince(value: string) {

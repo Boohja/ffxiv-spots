@@ -20,22 +20,8 @@ export function filterSpots(spots: PhotoSpot[], filters: SpotFilters) {
   const query = filters.query?.trim().toLowerCase();
 
   const filtered = spots.filter((spot) => {
-    const haystack = [
-      spot.title,
-      spot.description,
-      spot.region,
-      spot.zone,
-      spot.landmark,
-      spot.area,
-      spot.expansion,
-      ...spot.tags,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-
     return (
-      (!query || haystack.includes(query)) &&
+      (!query || getSearchableSpotText(spot).includes(query)) &&
       (!filters.expansion || spot.expansion === filters.expansion) &&
       (!filters.region || spot.region === filters.region) &&
       (!filters.zone || spot.zone === filters.zone) &&
@@ -45,6 +31,20 @@ export function filterSpots(spots: PhotoSpot[], filters: SpotFilters) {
   });
 
   return sortSpots(filtered, filters.sort ?? "newest");
+}
+
+function getSearchableSpotText(spot: PhotoSpot) {
+  return [
+    spot.title,
+    spot.zone,
+    spot.expansion,
+    spot.region,
+    spot.landmark,
+    ...spot.tags,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 }
 
 function sortSpots(spots: PhotoSpot[], sort: SpotSort) {

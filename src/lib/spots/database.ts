@@ -19,6 +19,10 @@ export type DatabaseSpotRow = {
   created_at: string;
   updated_at: string;
   accepted_at: string | null;
+  submitter: {
+    id: string;
+    displayname: string | null;
+  } | null;
   landmarks: {
     name: string;
   } | null;
@@ -32,13 +36,33 @@ export type DatabaseSpotRow = {
 };
 
 const acceptedSpotSelect =
-  "id,slug,state,zone,x,y,z,title,description,tags,access_notes,created_at,updated_at,accepted_at,landmarks(name),spot_images(url,alt,width,height,sort_order)";
+  "id,slug,state,zone,x,y,z,title,description,tags,access_notes,created_at,updated_at,accepted_at,submitter:app_users!spots_submitted_by_fkey(id,displayname),landmarks(name),spot_images(url,alt,width,height,sort_order)";
 
 export async function getAcceptedPhotoSpots(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from("spots")
     .select(acceptedSpotSelect)
     .eq("state", "accepted")
+    .order("accepted_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .returns<DatabaseSpotRow[]>();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map(toPhotoSpot);
+}
+
+export async function getAcceptedPhotoSpotsBySubmitter(
+  supabase: SupabaseClient,
+  submitterId: string,
+) {
+  const { data, error } = await supabase
+    .from("spots")
+    .select(acceptedSpotSelect)
+    .eq("state", "accepted")
+    .eq("submitted_by", submitterId)
     .order("accepted_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false })
     .returns<DatabaseSpotRow[]>();
@@ -72,6 +96,7 @@ export function toPhotoSpot(spot: DatabaseSpotRow): PhotoSpot {
     images: toSpotImages(spot),
     createdAt: spot.created_at,
     updatedAt: spot.updated_at,
+    submitter: spot.submitter,
   };
 }
 

@@ -11,7 +11,6 @@ type SpotCardProps = Readonly<{
 
 export function SpotCard({ spot, priority = false }: SpotCardProps) {
   const image = spot.images[0];
-  const description = spot.description.trim();
 
   return (
     <article className="glass-panel group overflow-hidden rounded-lg">
@@ -32,9 +31,6 @@ export function SpotCard({ spot, priority = false }: SpotCardProps) {
             <h3 className="mt-1 text-xl font-semibold text-text-primary">{spot.title}</h3>
             <p className="mt-1 text-sm text-text-secondary">{spot.zone}</p>
           </div>
-          <p className="min-h-[4.5rem] text-sm leading-6 text-text-secondary">
-            {description ? <span className="line-clamp-3">{description}</span> : null}
-          </p>
           <div className="flex flex-wrap gap-2">
             {spot.tags.slice(0, 4).map((tag) => (
               <TagPill key={tag} label={tag} />

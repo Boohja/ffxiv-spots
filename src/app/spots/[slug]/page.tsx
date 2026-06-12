@@ -30,6 +30,11 @@ type DatabaseSpot = {
   tags: string[] | null;
   access_notes: string | null;
   landmark_id: number | null;
+  submitted_by: string | null;
+  submitter: {
+    id: string;
+    displayname: string | null;
+  } | null;
   landmarks: {
     name: string;
   } | null;
@@ -86,7 +91,7 @@ async function getDatabaseSpotBySlug(slug: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("spots")
-    .select("id,slug,state,zone,x,y,z,title,description,tags,access_notes,landmark_id,landmarks(name),spot_images(url,alt,sort_order)")
+    .select("id,slug,state,zone,x,y,z,title,description,tags,access_notes,landmark_id,submitted_by,submitter:app_users!spots_submitted_by_fkey(id,displayname),landmarks(name),spot_images(url,alt,sort_order)")
     .eq("slug", slug)
     .maybeSingle<DatabaseSpot>();
 
@@ -153,6 +158,16 @@ function DatabaseSpotDetail({
           ["Expansion", <SearchTextLink key="expansion" filter="expansion" label={zone.expansion} />],
           ["Region", <SearchTextLink key="region" filter="region" label={zone.region} />],
           ["Zone", <SearchTextLink key="zone" filter="zone" label={spot.zone} />],
+          ...(spot.submitted_by
+            ? [
+                [
+                  "By",
+                  <Link key="submitter" href={`/users/${spot.submitted_by}`} className="transition hover:text-amber-100">
+                    {spot.submitter?.displayname ?? "XIVSpots user"}
+                  </Link>,
+                ] as [string, ReactNode],
+              ]
+            : []),
           ["Coordinates", formatCoordinates({ x: spot.x, y: spot.y })],
           ...(spot.z === null ? [] : [["Elevation", `Z ${spot.z}`] as [string, string]]),
           ...(spot.landmarks?.name
@@ -278,7 +293,7 @@ function LocationPanel({
 }: Readonly<{
   rows: [string, ReactNode | undefined][];
 }>) {
-  const primaryLabels = new Set(["Expansion", "Region", "Zone", "Coordinates", "Elevation", "Landmark"]);
+  const primaryLabels = new Set(["Expansion", "Region", "Zone", "By", "Coordinates", "Elevation", "Landmark"]);
   const primaryRows = rows.filter(([label, value]) => primaryLabels.has(label) && value);
   const secondaryRows = rows.filter(([label, value]) => !primaryLabels.has(label) && value);
 
@@ -312,9 +327,17 @@ function formatCoordinates(coordinates?: { x: number; y: number; z?: number }) {
     return undefined;
   }
 
-  return coordinates.z
-    ? `X ${coordinates.x}, Y ${coordinates.y}, Z ${coordinates.z}`
-    : `X ${coordinates.x}, Y ${coordinates.y}`;
+  return (
+    <>
+      <span className="text-text-muted">X</span> {coordinates.x},{" "}
+      <span className="text-text-muted">Y</span> {coordinates.y}
+      {coordinates.z ? (
+        <>
+          , <span className="text-text-muted">Z</span> {coordinates.z}
+        </>
+      ) : null}
+    </>
+  );
 }
 
 function getStateLabel(state: DatabaseSpot["state"]) {

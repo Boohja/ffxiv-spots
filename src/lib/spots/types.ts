@@ -33,6 +33,10 @@ export type PhotoSpot = {
   images: SpotImage[];
   createdAt: string;
   updatedAt: string;
+  submitter?: {
+    id: string;
+    displayname: string | null;
+  } | null;
 };
 
 export type PhotoSpotInput = Omit<PhotoSpot, "region" | "expansion">;

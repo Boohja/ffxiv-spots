@@ -19,14 +19,13 @@ export function FilterPanel({ facets, filters }: FilterPanelProps) {
     <form action="/spots" className="glass-panel sticky top-4 space-y-4 rounded-lg p-4">
       <div>
         <h2 className="text-lg font-semibold text-text-primary">Filter spots</h2>
-        <p className="mt-1 text-sm text-text-secondary">Search by mood, place, access, or tag.</p>
+        <p className="mt-1 text-sm text-text-secondary">Search by title, place, landmark, or tag.</p>
       </div>
       <label className="block text-sm font-semibold text-text-secondary">
         Search
         <input
           name="q"
           defaultValue={filters.query}
-          placeholder="Zone, tag, title..."
           className="mt-2 w-full rounded-lg border border-border-default bg-surface-base px-3 py-2 text-sm text-text-primary outline-none transition placeholder:text-text-subtle focus:border-border-active focus:ring-2 focus:ring-border-active/35"
         />
       </label>

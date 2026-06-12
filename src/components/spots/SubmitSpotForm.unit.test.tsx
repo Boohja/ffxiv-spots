@@ -135,6 +135,7 @@ describe("SubmitSpotForm", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<SubmitSpotForm />);
 
+    fireEvent.change(screen.getByLabelText("Zone"), { target: { value: "Upper La Noscea" } });
     fireEvent.change(screen.getByLabelText("X"), { target: { value: "10,4" } });
     fireEvent.change(screen.getByLabelText("Y"), { target: { value: "20,1" } });
     fireEvent.click(screen.getByRole("button", { name: "Save draft" }));

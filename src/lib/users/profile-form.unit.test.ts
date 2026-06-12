@@ -29,7 +29,6 @@ describe("parseProfileForm", () => {
     const result = parseProfileForm(
       makeFormData({
         displayname: " Aeron ",
-        public: true,
         social_instagram: "@aeron.gpose",
         social_x: "@aeron_xiv",
       }),
@@ -39,7 +38,6 @@ describe("parseProfileForm", () => {
       ok: true,
       values: {
         displayname: "Aeron",
-        public: true,
         social_instagram: "aeron.gpose",
         social_x: "aeron_xiv",
       },

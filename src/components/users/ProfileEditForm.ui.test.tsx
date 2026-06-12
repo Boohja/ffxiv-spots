@@ -14,7 +14,6 @@ describe("ProfileEditForm", () => {
         profile={{
           id: "27fa90fe-89eb-49b3-8f94-de17e3e522f7",
           displayname: "Aeron",
-          public: true,
           social_instagram: "aeron.gpose",
           social_x: "aeron_xiv",
         }}
@@ -23,7 +22,6 @@ describe("ProfileEditForm", () => {
 
     expect(screen.getByRole("heading", { name: "Profile settings" })).toBeInTheDocument();
     expect(screen.getByLabelText("Display name")).toHaveValue("Aeron");
-    expect(screen.getByLabelText("Public profile")).toBeChecked();
     expect(screen.getByLabelText("X handle")).toHaveValue("aeron_xiv");
     expect(screen.getByLabelText("Instagram handle")).toHaveValue("aeron.gpose");
     expect(screen.getByRole("button", { name: "Save profile" })).toBeEnabled();

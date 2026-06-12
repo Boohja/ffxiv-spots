@@ -29,7 +29,6 @@ export async function updateUserProfile(
     .from("app_users")
     .update({
       displayname: parsedForm.values.displayname,
-      public: parsedForm.values.public,
       social_x: parsedForm.values.social_x,
       social_instagram: parsedForm.values.social_instagram,
     })

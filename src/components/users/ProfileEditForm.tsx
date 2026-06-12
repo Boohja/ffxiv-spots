@@ -12,7 +12,6 @@ type ProfileEditFormProps = Readonly<{
   profile: {
     id: string;
     displayname: string;
-    public: boolean;
     social_x: string | null;
     social_instagram: string | null;
   };
@@ -41,15 +40,6 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
           <p className="text-sm font-semibold uppercase text-brand-spark">Edit</p>
           <h2 className="mt-1 text-2xl font-semibold text-text-primary">Profile settings</h2>
         </div>
-        <label className="inline-flex items-center gap-3 rounded-lg border border-border-default bg-surface-base px-3 py-2 text-sm font-semibold text-text-primary">
-          <input
-            name="public"
-            type="checkbox"
-            defaultChecked={profile.public}
-            className="h-4 w-4 accent-brand-cyan"
-          />
-          Public profile
-        </label>
       </div>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">

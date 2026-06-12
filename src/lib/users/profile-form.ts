@@ -10,7 +10,6 @@ export type ProfileFormState = {
 
 export type ValidProfileFormValues = {
   displayname: string;
-  public: boolean;
   social_x: string | null;
   social_instagram: string | null;
 };
@@ -87,7 +86,6 @@ export function parseProfileForm(formData: FormData):
     ok: true,
     values: {
       displayname,
-      public: formData.get("public") === "on",
       social_x: socialX || null,
       social_instagram: socialInstagram || null,
     },
