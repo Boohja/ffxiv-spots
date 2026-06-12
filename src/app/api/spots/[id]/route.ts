@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { notifyReviewSubmission } from "@/lib/notifications/discord";
 import { createNotification } from "@/lib/notifications/server";
 import {
   maxSpotAccessNotesLength,
@@ -75,8 +76,8 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Spot not found." }, { status: 404 });
     }
 
-    const viewerRole = roleResult.data?.role ?? null;
-    const isReviewer = viewerRole === "moderator" || viewerRole === "admin";
+    const viewerProfile = roleResult.data;
+    const isReviewer = viewerProfile?.role === "moderator" || viewerProfile?.role === "admin";
     const isOwner = spot.submitted_by === user.id;
     const formData = await request.formData();
     const action = parseAction(formData.get("action"));
@@ -249,6 +250,17 @@ export async function PATCH(request: Request, context: RouteContext) {
       });
     }
 
+    if (action === "submit" && spot.state === "draft") {
+      await notifyReviewSubmission({
+        slug: spot.slug,
+        submitter: {
+          id: user.id,
+          displayname: viewerProfile?.displayname ?? null,
+        },
+        title: input.title ?? `${input.zone} photo spot`,
+      });
+    }
+
     return NextResponse.json({
       spot: {
         id: spot.id,
@@ -277,9 +289,9 @@ async function getExistingSpot(supabase: Awaited<ReturnType<typeof createClient>
 async function getViewerRole(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   return supabase
     .from("app_users")
-    .select("role")
+    .select("role, displayname")
     .eq("id", userId)
-    .maybeSingle<{ role: AppRole }>();
+    .maybeSingle<{ role: AppRole; displayname: string | null }>();
 }
 
 function parseAction(value: FormDataEntryValue | null): SpotAction | undefined {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Exo_2, Space_Grotesk } from "next/font/google";
 import { MainFooter } from "@/components/layout/MainFooter";
 import { MainNavbar } from "@/components/layout/MainNavbar";
+import { buildDefaultMetadata } from "@/lib/metadata";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -14,10 +15,7 @@ const exo2 = Exo_2({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "XIVSpots",
-  description: "Discover scenic photo spots across Eorzea and beyond.",
-};
+export const metadata: Metadata = buildDefaultMetadata();
 
 export default function RootLayout({
   children,

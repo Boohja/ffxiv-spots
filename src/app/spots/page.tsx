@@ -11,7 +11,7 @@ type SpotsPageProps = Readonly<{
 }>;
 
 export const metadata = {
-  title: "Browse Spots | XIVSpots",
+  title: "Browse Spots",
   description: "Search and filter accepted Final Fantasy XIV photo spot ideas.",
 };
 

@@ -185,6 +185,7 @@ describe("POST /api/spots", () => {
   beforeEach(() => {
     vi.mocked(createClient).mockReset();
     vi.mocked(uploadImageFile).mockReset();
+    delete process.env.XIVSPOTS_REVIEW_DISCORD_WEBHOOK_URL;
     delete process.env.XIVSPOTS_MAX_DRAFTS_PER_USER;
     delete process.env.XIVSPOTS_MAX_PENDING_SPOTS_PER_USER;
   });

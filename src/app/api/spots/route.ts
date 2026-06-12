@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
+import { notifyReviewSubmission } from "@/lib/notifications/discord";
 import {
   maxSpotAccessNotesLength,
   maxSpotDescriptionLength,
@@ -48,8 +49,8 @@ export async function POST(request: Request) {
     const files = formData
       .getAll("images")
       .filter((value): value is File => value instanceof File);
-    const viewerRole = await getViewerRole(supabase, user.id);
-    const isReviewer = viewerRole === "moderator" || viewerRole === "admin";
+    const viewerProfile = await getViewerProfile(supabase, user.id);
+    const isReviewer = viewerProfile?.role === "moderator" || viewerProfile?.role === "admin";
 
     const validationError = validateSpotInput({
       files,
@@ -149,6 +150,17 @@ export async function POST(request: Request) {
       }
     }
 
+    if (validState === "submitted") {
+      await notifyReviewSubmission({
+        slug,
+        submitter: {
+          id: user.id,
+          displayname: viewerProfile?.displayname ?? null,
+        },
+        title: validTitle,
+      });
+    }
+
     return NextResponse.json(
       {
         spot: {
@@ -170,18 +182,18 @@ export async function POST(request: Request) {
   }
 }
 
-async function getViewerRole(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+async function getViewerProfile(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   const { data, error } = await supabase
     .from("app_users")
-    .select("role")
+    .select("role, displayname")
     .eq("id", userId)
-    .maybeSingle<{ role: AppRole }>();
+    .maybeSingle<{ role: AppRole; displayname: string | null }>();
 
   if (error) {
     throw error;
   }
 
-  return data?.role ?? null;
+  return data ?? null;
 }
 
 function validateSpotInput({

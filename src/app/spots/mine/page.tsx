@@ -7,7 +7,7 @@ import { getSpotEntriesForSubmitter } from "@/lib/spots/entry-list";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "My Spots | XIVSpots",
+  title: "My Spots",
   description: "Review your submitted XIVSpots entries and drafts.",
 };
 

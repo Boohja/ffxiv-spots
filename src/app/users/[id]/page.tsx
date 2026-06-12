@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: UserProfilePageProps): Promis
   const { id } = await params;
 
   if (!uuidPattern.test(id)) {
-    return { title: "User not found | XIVSpots" };
+    return { title: "User not found" };
   }
 
   const supabase = await createClient();
@@ -38,11 +38,11 @@ export async function generateMetadata({ params }: UserProfilePageProps): Promis
     .maybeSingle<Pick<PublicProfile, "id" | "displayname">>();
 
   if (!profile) {
-    return { title: "User not found | XIVSpots" };
+    return { title: "User not found" };
   }
 
   return {
-    title: `${profile.displayname ?? "XIVSpots user"} | XIVSpots`,
+    title: profile.displayname ?? "XIVSpots user",
     description: "A public XIVSpots community profile.",
   };
 }

@@ -6,7 +6,7 @@ import type { UserRole } from "@/lib/spots/types";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Submit Spot | XIVSpots",
+  title: "Submit Spot",
   description: "Submit a Final Fantasy XIV photo spot for review.",
 };
 

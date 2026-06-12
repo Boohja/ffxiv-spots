@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: SpotEditPageProps): Promise<M
     .maybeSingle<{ title: string }>();
 
   return {
-    title: data ? `Edit ${data.title} | XIVSpots` : "Edit spot | XIVSpots",
+    title: data ? `Edit ${data.title}` : "Edit spot",
   };
 }
 

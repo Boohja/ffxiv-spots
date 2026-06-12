@@ -8,6 +8,7 @@ import { SpotGrid } from "@/components/spots/SpotGrid";
 import { SpotStateBadge, type SpotStateBadgeState } from "@/components/spots/SpotStateBadge";
 import { SearchPill } from "@/components/spots/TagPill";
 import { getAcceptedPhotoSpots } from "@/lib/spots/database";
+import { absoluteUrl, siteName } from "@/lib/metadata";
 import { spotSearchHref } from "@/lib/spots/search-links";
 import type { SpotImage, UserRole } from "@/lib/spots/types";
 import { createClient } from "@/lib/supabase/server";
@@ -42,6 +43,8 @@ type DatabaseSpot = {
   spot_images: {
     url: string;
     alt: string | null;
+    width: number | null;
+    height: number | null;
     sort_order: number;
   }[];
   likeCount?: number;
@@ -57,8 +60,9 @@ export async function generateMetadata({ params }: SpotDetailPageProps): Promise
   const databaseSpot = await getDatabaseSpotBySlug(slug);
 
   return {
-    title: databaseSpot ? `${databaseSpot.title} | XIVSpots` : "Spot not found | XIVSpots",
-    description: databaseSpot?.description ?? undefined,
+    title: databaseSpot ? databaseSpot.title : "Spot not found",
+    description: databaseSpot ? getSpotMetadataDescription(databaseSpot) : undefined,
+    ...(databaseSpot ? buildSpotShareMetadata(databaseSpot) : {}),
   };
 }
 
@@ -98,7 +102,7 @@ async function getDatabaseSpotBySlug(slug: string, viewerId?: string | null) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("spots")
-    .select("id,slug,state,zone,x,y,z,title,description,tags,access_notes,landmark_id,submitted_by,submitter:app_users!spots_submitted_by_fkey(id,displayname),landmarks(name),spot_images(url,alt,sort_order)")
+    .select("id,slug,state,zone,x,y,z,title,description,tags,access_notes,landmark_id,submitted_by,submitter:app_users!spots_submitted_by_fkey(id,displayname),landmarks(name),spot_images(url,alt,width,height,sort_order)")
     .eq("slug", slug)
     .maybeSingle<DatabaseSpot>();
 
@@ -240,6 +244,68 @@ function DatabaseSpotDetail({
 
 function isMissingLikeSchemaError(error: { code?: string }) {
   return error.code === "42703" || error.code === "42P01" || error.code === "PGRST205";
+}
+
+function buildSpotShareMetadata(spot: DatabaseSpot): Metadata {
+  const description = getSpotMetadataDescription(spot);
+  const image = getSpotMetadataImage(spot);
+  const url = `/spots/${spot.slug ?? spot.id}`;
+
+  return {
+    alternates: {
+      canonical: url,
+    },
+    openGraph: {
+      title: spot.title,
+      description,
+      url,
+      siteName,
+      type: "article",
+      images: [
+        {
+          url: image.src,
+          width: image.width,
+          height: image.height,
+          alt: image.alt,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: spot.title,
+      description,
+      images: [absoluteUrl(image.src)],
+    },
+  };
+}
+
+function getSpotMetadataDescription(spot: DatabaseSpot) {
+  const description = spot.description?.trim();
+
+  if (description) {
+    return description;
+  }
+
+  const zone = getZoneMetadata(spot.zone);
+  return `A scenic photo spot in ${spot.zone}, ${zone.region}.`;
+}
+
+function getSpotMetadataImage(spot: DatabaseSpot) {
+  const image = [...spot.spot_images].sort((a, b) => a.sort_order - b.sort_order)[0];
+
+  return image
+    ? {
+        src: image.url,
+        alt: image.alt ?? spot.title,
+        width: image.width ?? undefined,
+        height: image.height ?? undefined,
+      }
+    : {
+        src: "/spots/placeholder.webp",
+        alt: spot.title,
+        width: 1254,
+        height: 1254,
+      };
 }
 
 function SpotDetailLayout({
@@ -421,6 +487,8 @@ function toSpotImages(spot: DatabaseSpot): SpotImage[] {
     .map((image) => ({
       src: image.url,
       alt: image.alt ?? spot.title,
+      width: image.width ?? undefined,
+      height: image.height ?? undefined,
     }));
 
   return images.length > 0

@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Sign in error | XIVSpots",
+  title: "Sign in error",
 };
 
 type AuthErrorPageProps = Readonly<{

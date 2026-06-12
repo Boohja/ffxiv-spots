@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { UserRole } from "@/lib/spots/types";
 
 export const metadata: Metadata = {
-  title: "Review Spots | XIVSpots",
+  title: "Review Spots",
   description: "Moderator review queue for pending XIVSpots submissions.",
 };
 

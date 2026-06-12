@@ -6,7 +6,7 @@ import { isMissingRelationError } from "@/lib/supabase/errors";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Notifications | XIVSpots",
+  title: "Notifications",
   description: "Review your XIVSpots notifications.",
 };
 
