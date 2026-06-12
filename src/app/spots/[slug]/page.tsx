@@ -19,6 +19,8 @@ type SpotDetailPageProps = Readonly<{
   params: Promise<{ slug: string }>;
 }>;
 
+export const dynamic = "force-dynamic";
+
 type DatabaseSpot = {
   id: string;
   slug: string;
@@ -50,10 +52,6 @@ type DatabaseSpot = {
   likeCount?: number;
   likedByViewer?: boolean;
 };
-
-export function generateStaticParams() {
-  return [];
-}
 
 export async function generateMetadata({ params }: SpotDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
