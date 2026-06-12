@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { spotSearchHref } from "@/lib/spots/search-links";
+
 type TagPillProps = Readonly<{
   label: string;
   href?: string;
@@ -18,4 +20,14 @@ export function TagPill({ label, href }: TagPillProps) {
   }
 
   return <span className={className}>{label}</span>;
+}
+
+export function SearchPill({
+  filter,
+  label,
+}: Readonly<{
+  filter: "expansion" | "landmark" | "region" | "tag" | "zone";
+  label: string;
+}>) {
+  return <TagPill label={label} href={spotSearchHref(filter, label)} />;
 }

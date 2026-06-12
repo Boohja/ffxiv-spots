@@ -5,11 +5,13 @@ import { notFound } from "next/navigation";
 import { ImageGallery } from "@/components/spots/ImageGallery";
 import { SpotGrid } from "@/components/spots/SpotGrid";
 import { SpotStateBadge, type SpotStateBadgeState } from "@/components/spots/SpotStateBadge";
-import { TagPill } from "@/components/spots/TagPill";
+import { SearchPill } from "@/components/spots/TagPill";
 import { getAcceptedPhotoSpots } from "@/lib/spots/database";
+import { spotSearchHref } from "@/lib/spots/search-links";
 import type { SpotImage, UserRole } from "@/lib/spots/types";
 import { createClient } from "@/lib/supabase/server";
 import { getZoneMetadata } from "@/lib/spots/zones";
+import type { ReactNode } from "react";
 
 type SpotDetailPageProps = Readonly<{
   params: Promise<{ slug: string }>;
@@ -137,15 +139,25 @@ function DatabaseSpotDetail({
     <div className="space-y-6">
       <SpotDetailLayout
         accessNotes={accessNotes}
-        breadcrumb={`${zone.expansion} / ${zone.region} / ${spot.zone}`}
+        breadcrumb={
+          <>
+            <SearchTextLink filter="expansion" label={zone.expansion} /> /{" "}
+            <SearchTextLink filter="region" label={zone.region} /> /{" "}
+            <SearchTextLink filter="zone" label={spot.zone} />
+          </>
+        }
         description={spot.description ?? undefined}
         editHref={canEdit ? `/spots/${spot.slug}/edit` : undefined}
         images={images}
         locationRows={[
-          ["Zone", spot.zone],
+          ["Expansion", <SearchTextLink key="expansion" filter="expansion" label={zone.expansion} />],
+          ["Region", <SearchTextLink key="region" filter="region" label={zone.region} />],
+          ["Zone", <SearchTextLink key="zone" filter="zone" label={spot.zone} />],
           ["Coordinates", formatCoordinates({ x: spot.x, y: spot.y })],
           ...(spot.z === null ? [] : [["Elevation", `Z ${spot.z}`] as [string, string]]),
-          ...(spot.landmarks?.name ? [["Landmark", spot.landmarks.name] as [string, string]] : []),
+          ...(spot.landmarks?.name
+            ? [["Landmark", <SearchTextLink key="landmark" filter="landmark" label={spot.landmarks.name} />] as [string, ReactNode]]
+            : []),
         ]}
         secondaryDetails={[]}
         statusLabel={getStateLabel(spot.state)}
@@ -171,12 +183,12 @@ function SpotDetailLayout({
   title,
 }: Readonly<{
   accessNotes?: string[];
-  breadcrumb: string;
+  breadcrumb: ReactNode;
   description?: string;
   editHref?: string;
   images: SpotImage[];
-  locationRows: [string, string | undefined][];
-  secondaryDetails: [string, string | undefined][];
+  locationRows: [string, ReactNode | undefined][];
+  secondaryDetails: [string, ReactNode | undefined][];
   statusLabel?: string;
   statusState: SpotStateBadgeState;
   tags: string[];
@@ -203,7 +215,7 @@ function SpotDetailLayout({
             {tags.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {tags.map((tag) => (
-                  <TagPill key={tag} label={tag} href={`/spots?tag=${encodeURIComponent(tag)}`} />
+                  <SearchPill key={tag} filter="tag" label={tag} />
                 ))}
               </div>
             ) : null}
@@ -264,9 +276,9 @@ function SpotDetailLayout({
 function LocationPanel({
   rows,
 }: Readonly<{
-  rows: [string, string | undefined][];
+  rows: [string, ReactNode | undefined][];
 }>) {
-  const primaryLabels = new Set(["Zone", "Coordinates", "Elevation", "Landmark"]);
+  const primaryLabels = new Set(["Expansion", "Region", "Zone", "Coordinates", "Elevation", "Landmark"]);
   const primaryRows = rows.filter(([label, value]) => primaryLabels.has(label) && value);
   const secondaryRows = rows.filter(([label, value]) => !primaryLabels.has(label) && value);
 
@@ -335,4 +347,18 @@ function toSpotImages(spot: DatabaseSpot): SpotImage[] {
           alt: "",
         },
       ];
+}
+
+function SearchTextLink({
+  filter,
+  label,
+}: Readonly<{
+  filter: "expansion" | "landmark" | "region" | "zone";
+  label: string;
+}>) {
+  return (
+    <Link href={spotSearchHref(filter, label)} className="transition hover:text-amber-100">
+      {label}
+    </Link>
+  );
 }

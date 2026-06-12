@@ -8,8 +8,10 @@ export const sortOptions = [
 
 export function getSpotFacets(spots: PhotoSpot[]) {
   return {
+    expansions: unique(spots.map((spot) => spot.expansion)),
     regions: unique(spots.map((spot) => spot.region)),
     zones: unique(spots.map((spot) => spot.zone)),
+    landmarks: unique(spots.map((spot) => spot.landmark).filter((landmark): landmark is string => Boolean(landmark))),
     tags: unique(spots.flatMap((spot) => spot.tags)),
   };
 }
@@ -23,6 +25,7 @@ export function filterSpots(spots: PhotoSpot[], filters: SpotFilters) {
       spot.description,
       spot.region,
       spot.zone,
+      spot.landmark,
       spot.area,
       spot.expansion,
       ...spot.tags,
@@ -33,8 +36,10 @@ export function filterSpots(spots: PhotoSpot[], filters: SpotFilters) {
 
     return (
       (!query || haystack.includes(query)) &&
+      (!filters.expansion || spot.expansion === filters.expansion) &&
       (!filters.region || spot.region === filters.region) &&
       (!filters.zone || spot.zone === filters.zone) &&
+      (!filters.landmark || spot.landmark === filters.landmark) &&
       (!filters.tag || spot.tags.includes(filters.tag))
     );
   });

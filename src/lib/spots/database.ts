@@ -19,6 +19,9 @@ export type DatabaseSpotRow = {
   created_at: string;
   updated_at: string;
   accepted_at: string | null;
+  landmarks: {
+    name: string;
+  } | null;
   spot_images: {
     url: string;
     alt: string | null;
@@ -29,7 +32,7 @@ export type DatabaseSpotRow = {
 };
 
 const acceptedSpotSelect =
-  "id,slug,state,zone,x,y,z,title,description,tags,access_notes,created_at,updated_at,accepted_at,spot_images(url,alt,width,height,sort_order)";
+  "id,slug,state,zone,x,y,z,title,description,tags,access_notes,created_at,updated_at,accepted_at,landmarks(name),spot_images(url,alt,width,height,sort_order)";
 
 export async function getAcceptedPhotoSpots(supabase: SupabaseClient) {
   const { data, error } = await supabase
@@ -57,6 +60,7 @@ export function toPhotoSpot(spot: DatabaseSpotRow): PhotoSpot {
     description: spot.description ?? "",
     region,
     zone: spot.zone,
+    landmark: spot.landmarks?.name,
     coordinates: {
       x: Number(spot.x),
       y: Number(spot.y),

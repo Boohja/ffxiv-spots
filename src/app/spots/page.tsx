@@ -4,6 +4,7 @@ import { getAcceptedPhotoSpots } from "@/lib/spots/database";
 import { filterSpots, getSpotFacets } from "@/lib/spots/filters";
 import type { SpotFilters, SpotSort } from "@/lib/spots/types";
 import { createClient } from "@/lib/supabase/server";
+import { type Expansion, expansions } from "@/lib/spots/zones";
 
 type SpotsPageProps = Readonly<{
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -48,8 +49,10 @@ export default async function SpotsPage({ searchParams }: SpotsPageProps) {
 function parseFilters(params: Record<string, string | string[] | undefined>): SpotFilters {
   return {
     query: single(params.q),
+    expansion: parseExpansion(single(params.expansion)),
     region: single(params.region),
     zone: single(params.zone),
+    landmark: single(params.landmark),
     tag: single(params.tag),
     sort: parseSort(single(params.sort)),
   };
@@ -61,4 +64,8 @@ function single(value: string | string[] | undefined) {
 
 function parseSort(value?: string): SpotSort | undefined {
   return value === "title" || value === "zone" || value === "newest" ? value : undefined;
+}
+
+function parseExpansion(value?: string): Expansion | undefined {
+  return expansions.includes(value as Expansion) ? (value as Expansion) : undefined;
 }

@@ -5,8 +5,10 @@ import type { SpotFilters } from "@/lib/spots/types";
 
 type FilterPanelProps = Readonly<{
   facets: {
+    expansions: string[];
     regions: string[];
     zones: string[];
+    landmarks: string[];
     tags: string[];
   };
   filters: SpotFilters;
@@ -28,8 +30,10 @@ export function FilterPanel({ facets, filters }: FilterPanelProps) {
           className="mt-2 w-full rounded-lg border border-border-default bg-surface-base px-3 py-2 text-sm text-text-primary outline-none transition placeholder:text-text-subtle focus:border-border-active focus:ring-2 focus:ring-border-active/35"
         />
       </label>
+      <SelectFilter name="expansion" label="Expansion" value={filters.expansion} options={facets.expansions} />
       <SelectFilter name="region" label="Region" value={filters.region} options={facets.regions} />
       <SelectFilter name="zone" label="Zone" value={filters.zone} options={facets.zones} />
+      <SelectFilter name="landmark" label="Landmark" value={filters.landmark} options={facets.landmarks} />
       <SelectFilter name="tag" label="Tag" value={filters.tag} options={facets.tags} />
       <label className="block text-sm font-semibold text-text-secondary">
         Sort

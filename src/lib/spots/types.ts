@@ -22,6 +22,7 @@ export type PhotoSpot = {
   description: string;
   region: string;
   zone: string;
+  landmark?: string;
   area?: string;
   coordinates?: Coordinates;
   expansion: Expansion;
@@ -61,8 +62,10 @@ export type SpotSort = "newest" | "title" | "zone";
 
 export type SpotFilters = {
   query?: string;
+  expansion?: Expansion;
   region?: string;
   zone?: string;
+  landmark?: string;
   tag?: string;
   sort?: SpotSort;
 };
