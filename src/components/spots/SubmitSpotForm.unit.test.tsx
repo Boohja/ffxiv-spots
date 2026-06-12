@@ -163,7 +163,13 @@ describe("SubmitSpotForm", () => {
   });
 
   it("shows a validation error for overlong tags before saving", async () => {
-    const fetchMock = vi.fn();
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      if (String(input).startsWith("/api/landmarks/nearest")) {
+        return Promise.resolve(Response.json({ landmark: null }));
+      }
+
+      return Promise.reject(new Error(`Unexpected fetch ${String(input)}`));
+    });
     vi.stubGlobal("fetch", fetchMock);
     render(<SubmitSpotForm />);
 
@@ -176,7 +182,7 @@ describe("SubmitSpotForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
 
     expect(await screen.findByText("Keep each tag to 24 characters or fewer.")).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some(([input]) => String(input) === "/api/spots")).toBe(false);
   });
 
   it("shows save and accept for staff creating a new spot", () => {

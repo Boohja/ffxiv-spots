@@ -8,6 +8,7 @@ export type DatabaseSpotRow = {
   id: string;
   slug: string | null;
   state: "draft" | "submitted" | "accepted" | "duplicate";
+  submitted_by: string | null;
   zone: string;
   x: number;
   y: number;
@@ -36,7 +37,7 @@ export type DatabaseSpotRow = {
 };
 
 const acceptedSpotSelect =
-  "id,slug,state,zone,x,y,z,title,description,tags,access_notes,created_at,updated_at,accepted_at,submitter:app_users!spots_submitted_by_fkey(id,displayname),landmarks(name),spot_images(url,alt,width,height,sort_order)";
+  "id,slug,state,submitted_by,zone,x,y,z,title,description,tags,access_notes,created_at,updated_at,accepted_at,landmarks(name),spot_images(url,alt,width,height,sort_order)";
 
 export async function getAcceptedPhotoSpots(supabase: SupabaseClient, viewerId?: string | null) {
   const { data, error } = await supabase
@@ -51,7 +52,9 @@ export async function getAcceptedPhotoSpots(supabase: SupabaseClient, viewerId?:
     throw error;
   }
 
-  return hydrateLikeState(supabase, (data ?? []).map(toPhotoSpot), viewerId);
+  const rows = await hydrateSubmitters(supabase, data ?? []);
+
+  return hydrateLikeState(supabase, rows.map(toPhotoSpot), viewerId);
 }
 
 export async function getAcceptedPhotoSpotsBySubmitter(
@@ -72,7 +75,9 @@ export async function getAcceptedPhotoSpotsBySubmitter(
     throw error;
   }
 
-  return hydrateLikeState(supabase, (data ?? []).map(toPhotoSpot), viewerId);
+  const rows = await hydrateSubmitters(supabase, data ?? []);
+
+  return hydrateLikeState(supabase, rows.map(toPhotoSpot), viewerId);
 }
 
 export function toPhotoSpot(spot: DatabaseSpotRow): PhotoSpot {
@@ -150,6 +155,31 @@ async function hydrateLikeState(supabase: SupabaseClient, spots: PhotoSpot[], vi
     ...spot,
     likeCount: countsBySpotId.get(spot.id) ?? 0,
     likedByViewer: likedSpotIds.has(spot.id),
+  }));
+}
+
+async function hydrateSubmitters(supabase: SupabaseClient, spots: DatabaseSpotRow[]) {
+  const submitterIds = [...new Set(spots.map((spot) => spot.submitted_by).filter((id): id is string => Boolean(id)))];
+
+  if (submitterIds.length === 0) {
+    return spots;
+  }
+
+  const { data, error } = await supabase
+    .from("public_profiles")
+    .select("id, displayname")
+    .in("id", submitterIds)
+    .returns<{ id: string; displayname: string | null }[]>();
+
+  if (error) {
+    throw error;
+  }
+
+  const profilesById = new Map((data ?? []).map((profile) => [profile.id, profile]));
+
+  return spots.map((spot) => ({
+    ...spot,
+    submitter: spot.submitted_by ? (profilesById.get(spot.submitted_by) ?? null) : null,
   }));
 }
 

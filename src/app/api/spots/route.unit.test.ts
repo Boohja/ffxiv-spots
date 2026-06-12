@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "@/app/api/spots/route";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { uploadImageFile } from "@/lib/uploads/storage";
+
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: vi.fn(),
+}));
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(),
@@ -153,6 +158,7 @@ function makeHarness(options: HarnessOptions = {}) {
   };
 
   vi.mocked(createClient).mockResolvedValue(harness.client as never);
+  vi.mocked(createAdminClient).mockReturnValue(harness.client as never);
 
   return harness;
 }
@@ -183,6 +189,7 @@ async function responseJson(response: Response) {
 
 describe("POST /api/spots", () => {
   beforeEach(() => {
+    vi.mocked(createAdminClient).mockReset();
     vi.mocked(createClient).mockReset();
     vi.mocked(uploadImageFile).mockReset();
     delete process.env.XIVSPOTS_REVIEW_DISCORD_WEBHOOK_URL;

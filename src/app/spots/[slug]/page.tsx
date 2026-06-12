@@ -102,7 +102,7 @@ async function getDatabaseSpotBySlug(slug: string, viewerId?: string | null) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("spots")
-    .select("id,slug,state,zone,x,y,z,title,description,tags,access_notes,landmark_id,submitted_by,submitter:app_users!spots_submitted_by_fkey(id,displayname),landmarks(name),spot_images(url,alt,width,height,sort_order)")
+    .select("id,slug,state,zone,x,y,z,title,description,tags,access_notes,landmark_id,submitted_by,landmarks(name),spot_images(url,alt,width,height,sort_order)")
     .eq("slug", slug)
     .maybeSingle<DatabaseSpot>();
 
@@ -115,10 +115,18 @@ async function getDatabaseSpotBySlug(slug: string, viewerId?: string | null) {
     return data;
   }
 
+  const submitter = data.submitted_by
+    ? await getPublicSubmitterProfile(supabase, data.submitted_by)
+    : null;
+  const spot = {
+    ...data,
+    submitter,
+  };
+
   const { data: likeCountRow, error: likeCountError } = await supabase
     .from("spots")
     .select("like_count")
-    .eq("id", data.id)
+    .eq("id", spot.id)
     .maybeSingle<{ like_count: number }>();
 
   if (likeCountError && !isMissingLikeSchemaError(likeCountError)) {
@@ -127,7 +135,7 @@ async function getDatabaseSpotBySlug(slug: string, viewerId?: string | null) {
 
   if (!viewerId) {
     return {
-      ...data,
+      ...spot,
       likeCount: likeCountRow?.like_count ?? 0,
     };
   }
@@ -135,7 +143,7 @@ async function getDatabaseSpotBySlug(slug: string, viewerId?: string | null) {
   const { data: like, error: likeError } = await supabase
     .from("spot_likes")
     .select("spot_id")
-    .eq("spot_id", data.id)
+    .eq("spot_id", spot.id)
     .eq("user_id", viewerId)
     .maybeSingle<{ spot_id: string }>();
 
@@ -144,10 +152,27 @@ async function getDatabaseSpotBySlug(slug: string, viewerId?: string | null) {
   }
 
   return {
-    ...data,
+    ...spot,
     likeCount: likeCountRow?.like_count ?? 0,
     likedByViewer: Boolean(like),
   };
+}
+
+async function getPublicSubmitterProfile(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  submitterId: string,
+) {
+  const { data, error } = await supabase
+    .from("public_profiles")
+    .select("id, displayname")
+    .eq("id", submitterId)
+    .maybeSingle<{ id: string; displayname: string | null }>();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
 }
 
 async function canViewerEditSpots() {
@@ -203,7 +228,7 @@ function DatabaseSpotDetail({
         description={spot.description ?? undefined}
         editHref={canEdit ? `/spots/${spot.slug}/edit` : undefined}
         images={images}
-        likeButton={
+        likeButton={spot.state === "accepted" ? (
           <LikeButton
             canLike={canLike}
             initialLiked={Boolean(spot.likedByViewer)}
@@ -211,7 +236,7 @@ function DatabaseSpotDetail({
             spotId={spot.id}
             variant="detail"
           />
-        }
+        ) : null}
         locationRows={[
           ["Expansion", <SearchTextLink key="expansion" filter="expansion" label={zone.expansion} />],
           ["Region", <SearchTextLink key="region" filter="region" label={zone.region} />],
@@ -327,7 +352,7 @@ function SpotDetailLayout({
   description?: string;
   editHref?: string;
   images: SpotImage[];
-  likeButton: ReactNode;
+  likeButton?: ReactNode;
   locationRows: [string, ReactNode | undefined][];
   secondaryDetails: [string, ReactNode | undefined][];
   statusLabel?: string;

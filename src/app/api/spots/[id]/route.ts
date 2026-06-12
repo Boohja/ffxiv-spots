@@ -9,6 +9,7 @@ import {
 } from "@/lib/spots/limits";
 import { parseSpotTags, validateSpotTags } from "@/lib/spots/tags";
 import { zonesByName } from "@/lib/spots/zones";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { deleteStoredImage, uploadImageFile, UploadValidationError } from "@/lib/uploads/storage";
 
@@ -91,7 +92,8 @@ export async function PATCH(request: Request, context: RouteContext) {
         return NextResponse.json({ error: "Only the submitter can revoke a submitted spot." }, { status: 403 });
       }
 
-      const { error } = await supabase
+      const adminSupabase = createAdminClient();
+      const { error } = await adminSupabase
         .from("spots")
         .update({ state: "draft" })
         .eq("id", spot.id);
@@ -117,8 +119,9 @@ export async function PATCH(request: Request, context: RouteContext) {
           message: buildDeletionMessage(deletionReason),
         });
       }
+      const adminSupabase = createAdminClient();
       await deleteImagesFromStorage(spot.spot_images);
-      const { error } = await supabase.from("spots").delete().eq("id", spot.id);
+      const { error } = await adminSupabase.from("spots").delete().eq("id", spot.id);
 
       if (error) {
         throw error;
@@ -157,6 +160,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
+    const adminSupabase = createAdminClient();
     const uploads = await Promise.all(files.map((file) => uploadImageFile(file, { folder: `spots/${spot.id}` })));
     const finalImages = [
       ...keptImages.map((image) => ({
@@ -173,7 +177,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       })),
     ];
 
-    const { error: spotError } = await supabase
+    const { error: spotError } = await adminSupabase
       .from("spots")
       .update({
         state: nextState,
@@ -196,7 +200,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     if (removedImages.length > 0) {
       await deleteImagesFromStorage(removedImages);
-      const { error: deleteImageRowsError } = await supabase
+      const { error: deleteImageRowsError } = await adminSupabase
         .from("spot_images")
         .delete()
         .in(
@@ -210,7 +214,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     if (uploads.length > 0) {
-      const { error: insertImagesError } = await supabase.from("spot_images").insert(
+      const { error: insertImagesError } = await adminSupabase.from("spot_images").insert(
         uploads.map((upload, index) => ({
           spot_id: spot.id,
           storage_key: upload.key,
@@ -231,7 +235,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (finalImages.length > 0) {
       const sortUpdates = await Promise.all(
         finalImages.map((image, index) =>
-          supabase.from("spot_images").update({ sort_order: index }).eq("storage_key", image.storage_key),
+          adminSupabase.from("spot_images").update({ sort_order: index }).eq("storage_key", image.storage_key),
         ),
       );
       const sortUpdateError = sortUpdates.find((result) => result.error)?.error;

@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: UserProfilePageProps): Promis
 
   const supabase = await createClient();
   const { data: profile } = await supabase
-    .from("app_users")
+    .from("public_profiles")
     .select("id, displayname")
     .eq("id", id)
     .maybeSingle<Pick<PublicProfile, "id" | "displayname">>();
@@ -59,7 +59,7 @@ export default async function UserProfilePage({ params }: UserProfilePageProps) 
     data: { user },
   } = await supabase.auth.getUser();
   const { data: profile, error } = await supabase
-    .from("app_users")
+    .from("public_profiles")
     .select("id, displayname, avatar_url, created_at, social_x, social_instagram")
     .eq("id", id)
     .maybeSingle<PublicProfile>();

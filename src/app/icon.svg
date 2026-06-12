@@ -6,6 +6,5 @@
       <stop offset="100%" stop-color="#1C6BFF" />
     </radialGradient>
   </defs>
-  <rect width="256" height="256" rx="54" fill="#020817"/>
-  <path d="M128 36L144 95L203 111L144 127L128 186L112 127L53 111L112 95L128 36Z" fill="url(#sparkGlow)"/>
+  <path d="M128 8L157.1 98.9L248 128L157.1 157.1L128 248L98.9 157.1L8 128L98.9 98.9L128 8Z" fill="url(#sparkGlow)"/>
 </svg>

@@ -12,6 +12,7 @@ import { parseSpotTags, validateSpotTags } from "@/lib/spots/tags";
 import { createClient } from "@/lib/supabase/server";
 import { uploadImageFile, UploadValidationError } from "@/lib/uploads/storage";
 import { zonesByName } from "@/lib/spots/zones";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -91,10 +92,11 @@ export async function POST(request: Request) {
     }
 
     const spotId = randomUUID();
-    const slug = await createUniqueSlug(supabase, validTitle);
+    const adminSupabase = createAdminClient();
+    const slug = await createUniqueSlug(adminSupabase, validTitle);
     const insertState = validState === "accepted" ? "submitted" : validState;
 
-    const { error: spotError } = await supabase.from("spots").insert({
+    const { error: spotError } = await adminSupabase.from("spots").insert({
       id: spotId,
       slug,
       submitted_by: user.id,
@@ -117,7 +119,7 @@ export async function POST(request: Request) {
     const uploads = await Promise.all(files.map((file) => uploadImageFile(file, { folder: `spots/${spotId}` })));
 
     if (uploads.length > 0) {
-      const { error: imagesError } = await supabase.from("spot_images").insert(
+      const { error: imagesError } = await adminSupabase.from("spot_images").insert(
         uploads.map((upload, index) => ({
           spot_id: spotId,
           storage_key: upload.key,
@@ -136,7 +138,7 @@ export async function POST(request: Request) {
     }
 
     if (validState === "accepted") {
-      const { error: acceptError } = await supabase
+      const { error: acceptError } = await adminSupabase
         .from("spots")
         .update({
           state: "accepted",
@@ -358,7 +360,7 @@ function getPositiveIntegerEnv(name: string, fallback: number) {
 }
 
 async function createUniqueSlug(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>,
   title: string,
 ) {
   const baseSlug = slugify(title) || "spot";

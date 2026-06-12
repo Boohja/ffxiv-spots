@@ -6,6 +6,8 @@ import {
   type DiscordAccessProfile,
 } from "@/lib/auth/discord-access";
 import { upsertAppUserProfile } from "@/lib/auth/profile";
+import { getSiteUrl } from "@/lib/metadata";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 function getSafeNext(value: string | null) {
@@ -13,7 +15,8 @@ function getSafeNext(value: string | null) {
 }
 
 export async function GET(request: NextRequest) {
-  const { origin, searchParams } = request.nextUrl;
+  const { searchParams } = request.nextUrl;
+  const redirectOrigin = getTrustedRedirectOrigin(request);
   const code = searchParams.get("code");
   const next = getSafeNext(searchParams.get("next"));
 
@@ -33,28 +36,29 @@ export async function GET(request: NextRequest) {
         if (failureReason) {
           await supabase.auth.signOut();
 
-          return NextResponse.redirect(`${origin}/auth/error?reason=${failureReason}`);
+          return NextResponse.redirect(`${redirectOrigin}/auth/error?reason=${failureReason}`);
         }
 
         try {
-          await upsertAppUserProfile(supabase, user);
+          await upsertAppUserProfile(createAdminClient(), user);
         } catch (profileError) {
           console.error("Failed to upsert app user profile.", profileError);
         }
       }
 
-      const forwardedHost = request.headers.get("x-forwarded-host");
-      const isLocalEnv = process.env.NODE_ENV === "development";
-
-      if (isLocalEnv || !forwardedHost) {
-        return NextResponse.redirect(`${origin}${next}`);
-      }
-
-      return NextResponse.redirect(`https://${forwardedHost}${next}`);
+      return NextResponse.redirect(`${redirectOrigin}${next}`);
     }
   }
 
-  return NextResponse.redirect(`${origin}/auth/error`);
+  return NextResponse.redirect(`${redirectOrigin}/auth/error`);
+}
+
+function getTrustedRedirectOrigin(request: NextRequest) {
+  if (process.env.NODE_ENV === "development") {
+    return request.nextUrl.origin;
+  }
+
+  return getSiteUrl().origin;
 }
 
 async function getAppUserAccessProfile(
