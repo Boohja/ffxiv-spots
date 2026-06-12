@@ -1,43 +1,31 @@
-# xivspots - Next.js Learning Skeleton
+# XIVSpots
 
-This is a TypeScript Next.js App Router project meant to teach by example.
-Core integrations are intentionally left as TODO placeholders.
+XIVSpots is a community app for sharing scenic Final Fantasy XIV photo spots. Users can submit locations with screenshots, browse accepted spots, like favorites, and manage their own submissions. Moderators review submitted spots before they become public.
 
-## Run Locally
+## Stack
+
+- Next.js App Router
+- React and TypeScript
+- Supabase Auth, database, and RLS
+- Cloudflare R2-compatible image storage
+- Vitest and ESLint
+
+## Local Setup
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open `http://localhost:3000`.
 
-## Project Map
+Copy `example.env` to `.env.local` and fill in the required values.
 
-- `src/components/layout/MainNavbar.tsx`: main site navigation example.
-- `src/components/ui/Button.tsx`: reusable button component.
-- `src/components/ui/Input.tsx`: reusable input component.
-- `src/app/page.tsx`: index route example.
-- `src/app/favorites/page.tsx`: favorites route example.
-- `src/app/api/auth/discord/route.ts`: Discord callback placeholder.
-- `src/app/api/upload/route.ts`: upload endpoint placeholder.
-- `src/lib/auth/discord.ts`: OAuth helper stubs.
-- `src/lib/db/client.ts`: database client stub.
-- `src/lib/uploads/storage.ts`: file upload abstraction stub.
-- `.env.example`: environment variable template.
 
-## What You Should Implement Next
+## Checks
 
-1. Discord auth flow
-2. Database client and schema
-3. File upload provider integration
-4. Protected favorites data loading
-
-Each placeholder file contains TODO hints and throws a clear "Not implemented" error until you complete it.
-
-## Vercel Deployment Notes
-
-1. Push this repo to GitHub.
-2. Import the repo in Vercel.
-3. Add environment variables from `.env.example` in Vercel Project Settings.
-4. Deploy.
+```bash
+npm run lint
+npm run test:all
+npm run build
+```
