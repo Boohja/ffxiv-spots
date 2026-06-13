@@ -185,6 +185,40 @@ describe("SubmitSpotForm", () => {
     expect(fetchMock.mock.calls.some(([input]) => String(input) === "/api/spots")).toBe(false);
   });
 
+  it("shows a friendly message when the server returns a non-json payload size error", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).startsWith("/api/landmarks/nearest")) {
+        return Promise.resolve(Response.json({ landmark: null }));
+      }
+
+      if (String(input) === "/api/spots" && init?.method === "POST") {
+        return Promise.resolve(
+          new Response("Request Entity Too Large\n\nFUNCTION_PAYLOAD_TOO_LARGE", {
+            status: 413,
+            headers: {
+              "content-type": "text/plain",
+            },
+          }),
+        );
+      }
+
+      return Promise.reject(new Error(`Unexpected fetch ${String(input)}`));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { container } = render(<SubmitSpotForm />);
+
+    chooseFiles(getFileInput(container), [new File(["screenshot"], "large.png", { type: "image/png" })]);
+    fireEvent.change(screen.getByLabelText("Zone"), { target: { value: "Upper La Noscea" } });
+    fireEvent.change(screen.getByLabelText("X"), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText("Y"), { target: { value: "20" } });
+    expect(await screen.findByText("large.png")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Submit spot" }));
+
+    expect(
+      await screen.findByText("The screenshots are still too large to submit. Try smaller images or remove one screenshot."),
+    ).toBeInTheDocument();
+  });
+
   it("shows save and accept for staff creating a new spot", () => {
     render(<SubmitSpotForm canAcceptOnCreate />);
 

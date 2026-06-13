@@ -30,6 +30,9 @@ type NearbyLandmark = {
 
 type SelectedImage = {
   file: File;
+  originalKey: string;
+  originalName: string;
+  originalSize: number;
   previewUrl: string;
 };
 
@@ -98,6 +101,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
   const [isLandmarkLookupPending, setIsLandmarkLookupPending] = useState(false);
   const [submitFeedback, setSubmitFeedback] = useState<SubmitFeedback>();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageProcessingCount, setImageProcessingCount] = useState(0);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [completion, setCompletion] = useState<CompletionState>();
   const [imageInputKey, setImageInputKey] = useState(0);
@@ -127,6 +131,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
   );
   const visibleLandmark = canLookupLandmark ? nearbyLandmark : null;
   const suggestedTitle = visibleLandmark?.name ?? (metadata ? `${zoneQuery} photo spot` : "Sunny beach spot");
+  const isImageProcessing = imageProcessingCount > 0;
 
   useEffect(() => {
     if (!canLookupLandmark) {
@@ -189,12 +194,88 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
     await saveSpot(isReviewMode ? "save_review" : "submit", event.currentTarget);
   }
 
+  async function addSelectedImages(files: File[]) {
+    if (files.length === 0) {
+      return;
+    }
+
+    const existingCount = existingImages.length;
+    const selectedSnapshot = selectedImagesRef.current;
+    const availableSlots = Math.max(0, 2 - existingCount - selectedSnapshot.length);
+
+    if (availableSlots === 0) {
+      return;
+    }
+
+    const currentKeys = new Set(selectedSnapshot.map((image) => image.originalKey));
+    const filesToAdd: File[] = [];
+
+    for (const file of files) {
+      if (filesToAdd.length >= availableSlots) {
+        break;
+      }
+
+      const key = fileKey(file);
+
+      if (currentKeys.has(key)) {
+        continue;
+      }
+
+      currentKeys.add(key);
+      filesToAdd.push(file);
+    }
+
+    if (filesToAdd.length === 0) {
+      return;
+    }
+
+    setImageProcessingCount((count) => count + filesToAdd.length);
+
+    try {
+      const preparedImages = await Promise.all(filesToAdd.map(prepareSelectedImage));
+
+      setSelectedImages((currentImages) => {
+        const nextImages = [...currentImages];
+        const nextKeys = new Set(currentImages.map((image) => image.originalKey));
+
+        for (const image of preparedImages) {
+          if (nextImages.length + existingImages.length >= 2 || nextKeys.has(image.originalKey)) {
+            URL.revokeObjectURL(image.previewUrl);
+            continue;
+          }
+
+          nextKeys.add(image.originalKey);
+          nextImages.push(image);
+        }
+
+        return nextImages.slice(0, Math.max(0, 2 - existingImages.length));
+      });
+    } catch (error) {
+      console.error(error);
+      setSubmitFeedback({
+        message: "Could not prepare one of the selected screenshots.",
+        tone: "error",
+      });
+    } finally {
+      setImageProcessingCount((count) => Math.max(0, count - filesToAdd.length));
+    }
+  }
+
   async function saveSpot(
     action: SubmitMode | EditAction,
     form: HTMLFormElement,
     options: { deletionReason?: string; skipDeleteDialog?: boolean } = {},
   ) {
     if (!isEditable && action !== "revoke") {
+      return;
+    }
+
+    if (isImageProcessing) {
+      setHasSubmitted(true);
+      setSubmitFeedback({
+        message: "Still preparing screenshots. Try again in a moment.",
+        tone: "info",
+      });
       return;
     }
 
@@ -252,7 +333,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
         method: isCreateMode ? "POST" : "PATCH",
         body: formData,
       });
-      const payload = (await response.json()) as { deleted?: boolean; spot?: { slug: string }; error?: string };
+      const payload = await parseSaveResponse(response);
 
       if (!response.ok || (!payload.spot && !payload.deleted)) {
         throw new Error(payload.error ?? "Could not save spot.");
@@ -522,7 +603,9 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
             <span className="mt-2 max-w-sm text-sm leading-6 text-text-secondary">
               {totalImages >= 2
                 ? "Remove one screenshot to choose a different image."
-                : ""}
+                : isImageProcessing
+                  ? "Preparing screenshots for upload..."
+                  : ""}
             </span>
             <ul className="mt-4 max-w-md space-y-1 text-left text-sm leading-5 text-text-muted">
               <li>Use unedited game screenshots without shaders, filters, or post-processing.</li>
@@ -532,10 +615,10 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
               type="button"
               variant="secondary"
               className="mt-4"
-              disabled={totalImages >= 2}
+              disabled={totalImages >= 2 || isImageProcessing}
               onClick={() => imageInputRef.current?.click()}
             >
-              Browse screenshots
+              {isImageProcessing ? "Preparing screenshots..." : "Browse screenshots"}
             </Button>
             <input
               key={imageInputKey}
@@ -544,36 +627,12 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
               type="file"
               accept="image/jpeg,image/png,image/webp"
               multiple
-              disabled={totalImages >= 2}
+              disabled={totalImages >= 2 || isImageProcessing}
               className="hidden"
               onChange={(event) => {
                 const pickedFiles = Array.from(event.currentTarget.files ?? []);
-
-                setSelectedImages((currentImages) => {
-                  const nextImages = [...currentImages];
-                  const currentKeys = new Set(currentImages.map((image) => fileKey(image.file)));
-
-                  for (const file of pickedFiles) {
-                    if (nextImages.length + existingImages.length >= 2) {
-                      break;
-                    }
-
-                    const key = fileKey(file);
-
-                    if (currentKeys.has(key)) {
-                      continue;
-                    }
-
-                    currentKeys.add(key);
-                    nextImages.push({
-                      file,
-                      previewUrl: URL.createObjectURL(file),
-                    });
-                  }
-
-                  return nextImages.slice(0, Math.max(0, 2 - existingImages.length));
-                });
                 setImageInputKey((key) => key + 1);
+                void addSelectedImages(pickedFiles);
               }}
             />
           </div>
@@ -619,7 +678,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
                     <img src={image.previewUrl} alt="" className="aspect-video w-full object-cover" />
                     <button
                       type="button"
-                      aria-label={`Remove ${image.file.name}`}
+                      aria-label={`Remove ${image.originalName}`}
                       className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full border border-border-default bg-surface-base/90 text-lg leading-none text-text-primary backdrop-blur transition hover:border-danger/70 hover:text-danger"
                       onClick={() => {
                         setSelectedImages((currentImages) => {
@@ -633,8 +692,8 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
                     </button>
                   </div>
                   <div className="space-y-1 px-3 py-2">
-                    <p className="truncate text-sm font-semibold text-text-primary">{image.file.name}</p>
-                    <p className="text-xs text-text-muted">{formatFileSize(image.file.size)}</p>
+                    <p className="truncate text-sm font-semibold text-text-primary">{image.originalName}</p>
+                    <p className="text-xs text-text-muted">{formatSelectedImageSize(image)}</p>
                   </div>
                 </li>
               ))}
@@ -671,7 +730,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
                   <Button
                     type="button"
                     size="lg"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isImageProcessing}
                     onClick={(event) => {
                       const form = event.currentTarget.form;
 
@@ -680,16 +739,16 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
                       }
                     }}
                   >
-                    {isSubmitting ? "Processing..." : "Save and accept"}
+                    {isSubmitting ? "Processing..." : isImageProcessing ? "Preparing images..." : "Save and accept"}
                   </Button>
                 ) : null}
-                <Button type="submit" variant="secondary" disabled={isSubmitting}>
-                  {isSubmitting ? "Processing..." : "Save and return"}
+                <Button type="submit" variant="secondary" disabled={isSubmitting || isImageProcessing}>
+                  {isSubmitting ? "Processing..." : isImageProcessing ? "Preparing images..." : "Save and return"}
                 </Button>
                 <Button
                   type="button"
                   variant="danger"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isImageProcessing}
                   onClick={(event) => {
                     const form = event.currentTarget.form;
 
@@ -698,7 +757,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
                     }
                   }}
                 >
-                  {isSubmitting ? "Processing..." : "Delete"}
+                  {isSubmitting ? "Processing..." : isImageProcessing ? "Preparing images..." : "Delete"}
                 </Button>
               </>
             ) : (
@@ -707,7 +766,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
                   <Button
                     type="button"
                     size="lg"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isImageProcessing}
                     onClick={(event) => {
                       const form = event.currentTarget.form;
 
@@ -716,22 +775,22 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
                       }
                     }}
                   >
-                    {isSubmitting ? "Processing..." : "Save and accept"}
+                    {isSubmitting ? "Processing..." : isImageProcessing ? "Preparing images..." : "Save and accept"}
                   </Button>
                 ) : (
-                  <Button type="submit" size="lg" disabled={isSubmitting}>
-                    {isSubmitting ? "Processing..." : "Submit spot"}
+                  <Button type="submit" size="lg" disabled={isSubmitting || isImageProcessing}>
+                    {isSubmitting ? "Processing..." : isImageProcessing ? "Preparing images..." : "Submit spot"}
                   </Button>
                 )}
                 {isCreateMode && canAcceptOnCreate ? (
-                  <Button type="submit" variant="secondary" disabled={isSubmitting}>
-                    {isSubmitting ? "Processing..." : "Submit spot"}
+                  <Button type="submit" variant="secondary" disabled={isSubmitting || isImageProcessing}>
+                    {isSubmitting ? "Processing..." : isImageProcessing ? "Preparing images..." : "Submit spot"}
                   </Button>
                 ) : null}
                 <Button
                   type="button"
                   variant="secondary"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isImageProcessing}
                   onClick={(event) => {
                     const form = event.currentTarget.form;
 
@@ -740,7 +799,7 @@ export function SubmitSpotForm({ canAcceptOnCreate = false, mode = "create", spo
                     }
                   }}
                 >
-                  {isSubmitting ? "Processing..." : "Save draft"}
+                  {isSubmitting ? "Processing..." : isImageProcessing ? "Preparing images..." : "Save draft"}
                 </Button>
               </>
             )}
@@ -874,6 +933,81 @@ function formatDateTime(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+async function prepareSelectedImage(file: File): Promise<SelectedImage> {
+  const processedFile = await compressImageForUpload(file).catch((error) => {
+    console.error(error);
+    return file;
+  });
+
+  return {
+    file: processedFile,
+    originalKey: fileKey(file),
+    originalName: file.name,
+    originalSize: file.size,
+    previewUrl: URL.createObjectURL(processedFile),
+  };
+}
+
+async function compressImageForUpload(file: File) {
+  if (!canCompressImagesInBrowser()) {
+    return file;
+  }
+
+  const image = await createImageBitmap(file);
+  const maxWidth = 1600;
+  const scale = image.width > maxWidth ? maxWidth / image.width : 1;
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+  const canvas = document.createElement("canvas");
+
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    image.close();
+    return file;
+  }
+
+  context.drawImage(image, 0, 0, width, height);
+  image.close();
+
+  const blob = await canvasToBlob(canvas, "image/webp", 0.76);
+
+  if (!blob) {
+    return file;
+  }
+
+  const compressedFile = new File([blob], replaceFileExtension(file.name, "webp"), {
+    lastModified: file.lastModified,
+    type: "image/webp",
+  });
+
+  return compressedFile.size < file.size ? compressedFile : file;
+}
+
+function canCompressImagesInBrowser() {
+  return (
+    typeof window !== "undefined" &&
+    typeof document !== "undefined" &&
+    typeof createImageBitmap === "function" &&
+    typeof HTMLCanvasElement !== "undefined" &&
+    typeof HTMLCanvasElement.prototype.toBlob === "function"
+  );
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number) {
+  return new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, type, quality);
+  });
+}
+
+function replaceFileExtension(fileName: string, extension: string) {
+  const baseName = fileName.replace(/\.[^.]+$/, "");
+
+  return `${baseName || "screenshot"}.${extension}`;
 }
 
 function SubmissionCompleteCard({ state, slug }: Readonly<{ state: SubmitMode; slug: string }>) {
@@ -1051,6 +1185,14 @@ function formatFileSize(size: number) {
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function formatSelectedImageSize(image: SelectedImage) {
+  if (image.file.size === image.originalSize) {
+    return formatFileSize(image.file.size);
+  }
+
+  return `${formatFileSize(image.file.size)} from ${formatFileSize(image.originalSize)}`;
+}
+
 function fileKey(file: File) {
   return `${file.name}-${file.size}-${file.lastModified}`;
 }
@@ -1061,4 +1203,44 @@ function normalizeCoordinateInput(value: string) {
 
 function isValidCoordinateString(value: string) {
   return /^\d{1,2}(?:\.\d)?$/.test(value.trim());
+}
+
+type SaveResponsePayload = {
+  deleted?: boolean;
+  spot?: {
+    slug: string;
+  };
+  error?: string;
+};
+
+async function parseSaveResponse(response: Response): Promise<SaveResponsePayload> {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (contentType.toLowerCase().includes("application/json")) {
+    try {
+      return (await response.json()) as SaveResponsePayload;
+    } catch {
+      return { error: getFallbackResponseMessage(response.status) };
+    }
+  }
+
+  const text = await response.text().catch(() => "");
+
+  return { error: getNonJsonResponseMessage(response.status, text) };
+}
+
+function getNonJsonResponseMessage(status: number, text: string) {
+  if (status === 413 || /FUNCTION_PAYLOAD_TOO_LARGE|Request Entity Too Large/i.test(text)) {
+    return "The screenshots are still too large to submit. Try smaller images or remove one screenshot.";
+  }
+
+  return getFallbackResponseMessage(status);
+}
+
+function getFallbackResponseMessage(status: number) {
+  if (status >= 500) {
+    return "The server returned an unexpected response. Please try again.";
+  }
+
+  return "Could not save spot.";
 }
